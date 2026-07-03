@@ -1,0 +1,85 @@
+@startuml
+skinparam classAttributeIconSize 0
+skinparam style strictuml
+
+class Utilisateur {
+  -idUtilisateur : int
+  -nomComplet : string
+  -email : string
+  -motDePasse : string
+  -role : string
+  -dateInscription : date
+  +authentifier() : bool
+  +mettreAJourProfil() : void
+}
+
+class Enseignant {
+  +creerCours() : void
+  +ajouterChapitre() : void
+  +ajouterEvaluation() : void
+  +personnaliserCertificat() : void
+  +genererPlanCours() : void
+}
+
+class Apprenant {
+  +sInscrireCours() : void
+  +suivreCours() : void
+  +passerEvaluation() : void
+  +recevoirCertificat() : void
+  +telechargerCertificat() : void
+}
+
+class Administrateur {
+  +gererUtilisateurs() : void
+  +supprimerCoursNonAutorise() : void
+  +supprimerUtilisateurNonAutorise() : void
+  +consulterStatistiques() : void
+}
+
+class Cours {
+  -idCours : int
+  -titre : string
+  -description : string
+  -duree : int
+  -niveau : string
+  -statut : string
+  +publier() : void
+  +modifier() : void
+  +supprimer() : void
+}
+
+class Chapitre {
+  -idChapitre : int
+  -titre : string
+  -contenu : text
+  -ordre : int
+}
+class Certificat {
+  -idCertificat : int
+  -numeroUnique : string
+  -dateEmission : date
+  -nomApprenant : string
+  -titreCours : string
+  +telechargerPDF() : void
+}
+class Evaluation {
+  -idEvaluation : int
+  -type : string
+  -questions : text
+  -noteMax : int
+  +corriger() : void
+}
+
+
+
+Utilisateur <|-- Enseignant
+Utilisateur <|-- Apprenant
+Utilisateur <|-- Administrateur
+
+Enseignant "1" -- "0..*" Cours : crée >
+Cours "1" -- "0..*" Chapitre : contient >
+Cours "1" -- "0..*" Evaluation : évalue >
+Apprenant "0..*" -- "0..*" Cours : suit >
+Apprenant "1" -- "0..*" Certificat : reçoit >
+Evaluation "1" -- "1" Certificat : génère >
+@enduml
