@@ -55,20 +55,20 @@
             },
             "Microsoft.EntityFrameworkCore": {
               "target": "Package",
-              "version": "[8.0.13, )"
+              "version": "[9.0.0, )"
             },
             "Microsoft.EntityFrameworkCore.Design": {
               "suppressParent": "All",
               "target": "Package",
-              "version": "[8.0.13, )"
+              "version": "[9.0.0, )"
             },
             "Pomelo.EntityFrameworkCore.MySql": {
               "target": "Package",
-              "version": "[8.0.5, )"
+              "version": "[9.0.0, )"
             },
             "QuestPDF": {
               "target": "Package",
-              "version": "[2024.8.0, )"
+              "version": "[2024.10.0, )"
             }
           },
           "imports": [

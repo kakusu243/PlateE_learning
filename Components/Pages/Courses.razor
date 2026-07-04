@@ -24,7 +24,7 @@ else
                     <div class="card-body">
                         <h5 class="card-title">@course.Title</h5>
                         <p class="card-text">@course.Description</p>
-                        <button class="btn btn-primary" @onclick="() => NavigationManager.NavigateTo($"/courses/{course.Id}")">Voir le cours</button>
+                        <button class="btn btn-primary" @onclick="() => GoToCourse(course.Id)">Voir le cours</button>
                     </div>
                 </div>
             </div>
@@ -40,5 +40,10 @@ else
         courses = await DbContext.Courses
             .OrderByDescending(c => c.CreatedOn)
             .ToListAsync();
+    }
+
+    private void GoToCourse(int courseId)
+    {
+        NavigationManager.NavigateTo($"/courses/{courseId}");
     }
 }
