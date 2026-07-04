@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "dgSpecHash": "0huyh9QcfCk=",
+  "success": true,
+  "projectFilePath": "C:\\Users\\johns\\Downloads\\Plat_Elearning\\PlateE_learning\\PlateE_learning.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\johns\\.nuget\\packages\\microsoft.aspnetcore.app.internal.assets\\10.0.8\\microsoft.aspnetcore.app.internal.assets.10.0.8.nupkg.sha512"
+  ],
+  "logs": []
+}
