@@ -1,0 +1,55 @@
+@page "/login"
+@inject AuthService AuthService
+@inject AppAuthenticationStateProvider AuthStateProvider
+@using PlateE_learning.Models
+
+<PageTitle>Connexion</PageTitle>
+
+<h1>Connexion</h1>
+
+<EditForm Model="loginModel" OnValidSubmit="OnLoginAsync">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <div class="mb-3">
+        <label class="form-label">Email</label>
+        <InputText class="form-control" @bind-Value="loginModel.Email" />
+    </div>
+    <div class="mb-3">
+        <label class="form-label">Mot de passe</label>
+        <InputText class="form-control" type="password" @bind-Value="loginModel.Password" />
+    </div>
+
+    <button class="btn btn-primary" type="submit">Se connecter</button>
+</EditForm>
+
+@if (!string.IsNullOrEmpty(errorMessage))
+{
+    <div class="alert alert-danger mt-3">@errorMessage</div>
+}
+
+@inject NavigationManager NavigationManager
+
+@code {
+    private LoginModel loginModel = new();
+    private string errorMessage = string.Empty;
+
+    private async Task OnLoginAsync()
+    {
+        var user = await AuthService.AuthenticateAsync(loginModel.Email, loginModel.Password);
+        if (user == null)
+        {
+            errorMessage = "Email ou mot de passe invalide.";
+            return;
+        }
+
+        AuthStateProvider.SignIn(AuthService.CreatePrincipal(user));
+        NavigationManager.NavigateTo("/");
+    }
+
+    private class LoginModel
+    {
+        public string Email { get; set; } = string.Empty;
+        public string Password { get; set; } = string.Empty;
+    }
+}

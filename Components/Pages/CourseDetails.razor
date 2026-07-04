@@ -1,0 +1,61 @@
+@page "/courses/{CourseId:int}"
+@inject AppDbContext DbContext
+@inject NavigationManager NavigationManager
+
+<PageTitle>Course Details</PageTitle>
+
+@if (course == null)
+{
+    <p><em>Chargement du cours...</em></p>
+}
+else
+{
+    <div class="mb-3">
+        <h1>@course.Title</h1>
+        <p>@course.Description</p>
+    </div>
+
+    <h3>Plan du cours</h3>
+    <ol class="list-group list-group-numbered mb-4">
+        @foreach (var chapter in course.Chapters.OrderBy(ch => ch.Order))
+        {
+            <li class="list-group-item">
+                <strong>@chapter.Title</strong>
+                <p>@chapter.Summary</p>
+            </li>
+        }
+    </ol>
+
+    <h3>Évaluations</h3>
+    <ul class="list-group mb-4">
+        @foreach (var evaluation in course.Evaluations)
+        {
+            <li class="list-group-item">
+                <strong>@evaluation.Title</strong>
+                <span class="badge bg-secondary">@((evaluation.IsSurvey) ? "Sondage" : "QCM")</span>
+            </li>
+        }
+    </ul>
+
+    <button class="btn btn-success" @onclick="GenerateMockCertificate">Télécharger certificat PDF</button>
+}
+
+@code {
+    [Parameter]
+    public int CourseId { get; set; }
+
+    private Course? course;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        course = await DbContext.Courses
+            .Include(c => c.Chapters)
+            .Include(c => c.Evaluations)
+            .FirstOrDefaultAsync(c => c.Id == CourseId);
+    }
+
+    private void GenerateMockCertificate()
+    {
+        NavigationManager.NavigateTo($"/certificate/{CourseId}");
+    }
+}

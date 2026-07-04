@@ -1,10 +1,70 @@
 {
   "version": 2,
-  "dgSpecHash": "0huyh9QcfCk=",
-  "success": true,
+  "dgSpecHash": "w5ZqbIY1xNI=",
+  "success": false,
   "projectFilePath": "C:\\Users\\johns\\Downloads\\Plat_Elearning\\PlateE_learning\\PlateE_learning.csproj",
   "expectedPackageFiles": [
-    "C:\\Users\\johns\\.nuget\\packages\\microsoft.aspnetcore.app.internal.assets\\10.0.8\\microsoft.aspnetcore.app.internal.assets.10.0.8.nupkg.sha512"
+    "C:\\Users\\johns\\.nuget\\packages\\humanizer.core\\2.14.1\\humanizer.core.2.14.1.nupkg.sha512",
+    "C:\\Users\\johns\\.nuget\\packages\\microsoft.aspnetcore.app.internal.assets\\10.0.8\\microsoft.aspnetcore.app.internal.assets.10.0.8.nupkg.sha512",
+    "C:\\Users\\johns\\.nuget\\packages\\microsoft.bcl.asyncinterfaces\\6.0.0\\microsoft.bcl.asyncinterfaces.6.0.0.nupkg.sha512",
+    "C:\\Users\\johns\\.nuget\\packages\\microsoft.codeanalysis.analyzers\\3.3.3\\microsoft.codeanalysis.analyzers.3.3.3.nupkg.sha512",
+    "C:\\Users\\johns\\.nuget\\packages\\microsoft.codeanalysis.common\\4.5.0\\microsoft.codeanalysis.common.4.5.0.nupkg.sha512",
+    "C:\\Users\\johns\\.nuget\\packages\\microsoft.codeanalysis.csharp\\4.5.0\\microsoft.codeanalysis.csharp.4.5.0.nupkg.sha512",
+    "C:\\Users\\johns\\.nuget\\packages\\microsoft.codeanalysis.csharp.workspaces\\4.5.0\\microsoft.codeanalysis.csharp.workspaces.4.5.0.nupkg.sha512",
+    "C:\\Users\\johns\\.nuget\\packages\\microsoft.codeanalysis.workspaces.common\\4.5.0\\microsoft.codeanalysis.workspaces.common.4.5.0.nupkg.sha512",
+    "C:\\Users\\johns\\.nuget\\packages\\microsoft.entityframeworkcore\\8.0.13\\microsoft.entityframeworkcore.8.0.13.nupkg.sha512",
+    "C:\\Users\\johns\\.nuget\\packages\\microsoft.entityframeworkcore.abstractions\\8.0.13\\microsoft.entityframeworkcore.abstractions.8.0.13.nupkg.sha512",
+    "C:\\Users\\johns\\.nuget\\packages\\microsoft.entityframeworkcore.analyzers\\8.0.13\\microsoft.entityframeworkcore.analyzers.8.0.13.nupkg.sha512",
+    "C:\\Users\\johns\\.nuget\\packages\\microsoft.entityframeworkcore.design\\8.0.13\\microsoft.entityframeworkcore.design.8.0.13.nupkg.sha512",
+    "C:\\Users\\johns\\.nuget\\packages\\microsoft.entityframeworkcore.relational\\9.0.0\\microsoft.entityframeworkcore.relational.9.0.0.nupkg.sha512",
+    "C:\\Users\\johns\\.nuget\\packages\\microsoft.extensions.dependencymodel\\8.0.2\\microsoft.extensions.dependencymodel.8.0.2.nupkg.sha512",
+    "C:\\Users\\johns\\.nuget\\packages\\mono.texttemplating\\2.2.1\\mono.texttemplating.2.2.1.nupkg.sha512",
+    "C:\\Users\\johns\\.nuget\\packages\\mysqlconnector\\2.4.0\\mysqlconnector.2.4.0.nupkg.sha512",
+    "C:\\Users\\johns\\.nuget\\packages\\pomelo.entityframeworkcore.mysql\\9.0.0\\pomelo.entityframeworkcore.mysql.9.0.0.nupkg.sha512",
+    "C:\\Users\\johns\\.nuget\\packages\\questpdf\\2024.10.0\\questpdf.2024.10.0.nupkg.sha512",
+    "C:\\Users\\johns\\.nuget\\packages\\system.codedom\\4.4.0\\system.codedom.4.4.0.nupkg.sha512",
+    "C:\\Users\\johns\\.nuget\\packages\\system.composition\\6.0.0\\system.composition.6.0.0.nupkg.sha512",
+    "C:\\Users\\johns\\.nuget\\packages\\system.composition.attributedmodel\\6.0.0\\system.composition.attributedmodel.6.0.0.nupkg.sha512",
+    "C:\\Users\\johns\\.nuget\\packages\\system.composition.convention\\6.0.0\\system.composition.convention.6.0.0.nupkg.sha512",
+    "C:\\Users\\johns\\.nuget\\packages\\system.composition.hosting\\6.0.0\\system.composition.hosting.6.0.0.nupkg.sha512",
+    "C:\\Users\\johns\\.nuget\\packages\\system.composition.runtime\\6.0.0\\system.composition.runtime.6.0.0.nupkg.sha512",
+    "C:\\Users\\johns\\.nuget\\packages\\system.composition.typedparts\\6.0.0\\system.composition.typedparts.6.0.0.nupkg.sha512"
   ],
-  "logs": []
+  "logs": [
+    {
+      "code": "NU1603",
+      "level": "Warning",
+      "message": "PlateE_learning dépend de Pomelo.EntityFrameworkCore.MySql (>= 8.0.5) mais Pomelo.EntityFrameworkCore.MySql 8.0.5 est introuvable. Pomelo.EntityFrameworkCore.MySql 9.0.0 a été résolu à la place.",
+      "projectPath": "C:\\Users\\johns\\Downloads\\Plat_Elearning\\PlateE_learning\\PlateE_learning.csproj",
+      "warningLevel": 1,
+      "filePath": "C:\\Users\\johns\\Downloads\\Plat_Elearning\\PlateE_learning\\PlateE_learning.csproj",
+      "libraryId": "Pomelo.EntityFrameworkCore.MySql",
+      "targetGraphs": [
+        "net10.0"
+      ]
+    },
+    {
+      "code": "NU1603",
+      "level": "Warning",
+      "message": "PlateE_learning dépend de QuestPDF (>= 2024.8.0) mais QuestPDF 2024.8.0 est introuvable. QuestPDF 2024.10.0 a été résolu à la place.",
+      "projectPath": "C:\\Users\\johns\\Downloads\\Plat_Elearning\\PlateE_learning\\PlateE_learning.csproj",
+      "warningLevel": 1,
+      "filePath": "C:\\Users\\johns\\Downloads\\Plat_Elearning\\PlateE_learning\\PlateE_learning.csproj",
+      "libraryId": "QuestPDF",
+      "targetGraphs": [
+        "net10.0"
+      ]
+    },
+    {
+      "code": "NU1605",
+      "level": "Error",
+      "message": "Avertissement comme erreur : Passage à une version antérieure du package détecté\u00A0: Microsoft.EntityFrameworkCore de 9.0.0 à 8.0.13. Référencez le package directement à partir du projet pour sélectionner une version différente. \r\n PlateE_learning -> Microsoft.EntityFrameworkCore.Design 8.0.13 -> Microsoft.EntityFrameworkCore.Relational 9.0.0 -> Microsoft.EntityFrameworkCore (>= 9.0.0) \r\n PlateE_learning -> Microsoft.EntityFrameworkCore (>= 8.0.13)",
+      "projectPath": "C:\\Users\\johns\\Downloads\\Plat_Elearning\\PlateE_learning\\PlateE_learning.csproj",
+      "filePath": "C:\\Users\\johns\\Downloads\\Plat_Elearning\\PlateE_learning\\PlateE_learning.csproj",
+      "libraryId": "Microsoft.EntityFrameworkCore",
+      "targetGraphs": [
+        "net10.0"
+      ]
+    }
+  ]
 }

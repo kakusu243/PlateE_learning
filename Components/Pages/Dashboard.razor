@@ -1,0 +1,55 @@
+@page "/dashboard"
+@inject AppDbContext DbContext
+
+<PageTitle>Tableau de bord</PageTitle>
+
+<h1>Tableau de bord administrateur</h1>
+
+@if (stats == null)
+{
+    <p><em>Collecte des statistiques...</em></p>
+}
+else
+{
+    <div class="row g-4">
+        <div class="col-md-4">
+            <div class="card bg-light p-3">
+                <h5>Utilisateurs totaux</h5>
+                <p class="display-6">@stats.TotalUsers</p>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card bg-light p-3">
+                <h5>Cours publiés</h5>
+                <p class="display-6">@stats.TotalCourses</p>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card bg-light p-3">
+                <h5>Inscription aux cours</h5>
+                <p class="display-6">@stats.TotalEnrollments</p>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private DashboardStats? stats;
+
+    protected override async Task OnInitializedAsync()
+    {
+        stats = new DashboardStats
+        {
+            TotalUsers = await DbContext.Users.CountAsync(),
+            TotalCourses = await DbContext.Courses.CountAsync(),
+            TotalEnrollments = await DbContext.Enrollments.CountAsync()
+        };
+    }
+
+    private sealed class DashboardStats
+    {
+        public int TotalUsers { get; set; }
+        public int TotalCourses { get; set; }
+        public int TotalEnrollments { get; set; }
+    }
+}

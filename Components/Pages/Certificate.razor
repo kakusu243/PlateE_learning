@@ -1,0 +1,52 @@
+@page "/certificate/{CourseId:int}"
+@inject AppDbContext DbContext
+@inject CertificateService CertificateService
+
+<PageTitle>Certificat</PageTitle>
+
+@if (course == null)
+{
+    <p><em>Chargement du certificat...</em></p>
+}
+else
+{
+    <div class="alert alert-success">
+        Un certificat a été généré pour <strong>@course.Title</strong>. Cliquez sur le bouton pour télécharger le PDF.
+    </div>
+    <button class="btn btn-primary" @onclick="DownloadCertificate">Télécharger le certificat</button>
+}
+
+@code {
+    [Parameter]
+    public int CourseId { get; set; }
+
+    private Course? course;
+    private bool isDownloading;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        course = await DbContext.Courses.FirstOrDefaultAsync(c => c.Id == CourseId);
+    }
+
+    private async Task DownloadCertificate()
+    {
+        if (course == null)
+            return;
+
+        var certificate = new PlateE_learning.Models.Certificate
+        {
+            RecipientName = "Apprenant Démo",
+            CourseTitle = course.Title,
+            IssuedOn = DateTime.UtcNow,
+            TemplateData = "Ce certificat atteste de la réussite de la formation en ligne.",
+        };
+
+        var pdfBytes = CertificateService.GenerateCertificatePdf(certificate);
+        var base64 = Convert.ToBase64String(pdfBytes);
+        var url = $"data:application/pdf;base64,{base64}";
+        await JS.InvokeVoidAsync("open", url, "_blank");
+    }
+
+    [Inject]
+    private IJSRuntime JS { get; set; } = default!;
+}
