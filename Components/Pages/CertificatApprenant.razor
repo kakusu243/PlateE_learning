@@ -1,0 +1,74 @@
+@page "/mon-certificat"
+@using PlateE_learning.Models
+@using CertificatModel = PlateE_learning.Models.Certificat
+@using QuestPDF.Fluent
+@using QuestPDF.Helpers
+@using QuestPDF.Infrastructure
+@inject PlateE_learning.Data.AppDbContext _context
+
+<h3>Mon Certificat</h3>
+
+@if (certificat != null)
+{
+    <div class="card p-3">
+        <h4>Certificat de Réussite</h4>
+        <p><strong>Apprenant :</strong> @certificat.NomApprenant</p>
+        <p><strong>Cours :</strong> @certificat.TitreCours</p>
+        <p><strong>Signataire :</strong> @certificat.Signataire</p>
+        <p><strong>Date :</strong> @certificat.DateEmission.ToShortDateString()</p>
+        <p><strong>Numéro :</strong> @certificat.NumeroUnique</p>
+    </div>
+
+    <button class="btn btn-primary" @onclick="DownloadPdf">Télécharger en PDF</button>
+}
+else
+{
+    <p>Aucun certificat disponible pour le moment.</p>
+}
+
+@code {
+    private CertificatModel? certificat;
+
+    protected override void OnInitialized()
+    {
+        // Exemple : récupérer le dernier certificat de l’apprenant connecté
+        certificat = _context.Certificats
+            .OrderByDescending(c => c.DateEmission)
+            .FirstOrDefault(c => c.NomApprenant == "Jean Dupont"); // TODO: remplacer par l’utilisateur connecté
+    }
+
+    private void DownloadPdf()
+    {
+        if (certificat is null)
+        {
+            return;
+        }
+
+        var document = QuestPDF.Fluent.Document.Create(container =>
+        {
+            container.Page(page =>
+            {
+                page.Size(PageSizes.A4);
+                page.Margin(2, Unit.Centimetre);
+                page.DefaultTextStyle(x => x.FontSize(14));
+
+                page.Header().Text("Certificat de Réussite").Bold().FontSize(20).AlignCenter();
+
+                page.Content().Column(col =>
+                {
+                    col.Item().Text($"Apprenant : {certificat.NomApprenant}");
+                    col.Item().Text($"Cours : {certificat.TitreCours}");
+                    col.Item().Text($"Signataire : {certificat.Signataire}");
+                    col.Item().Text($"Date : {certificat.DateEmission.ToShortDateString()}");
+                    col.Item().Text($"Description : {certificat.Description}");
+                });
+
+                page.Footer().AlignCenter().Text($"Numéro : {certificat.NumeroUnique}");
+            });
+        });
+
+        var pdfBytes = document.GeneratePdf();
+        var filePath = Path.Combine("wwwroot", $"certificat_{certificat.NumeroUnique}.pdf");
+        File.WriteAllBytes(filePath, pdfBytes);
+    }
+}

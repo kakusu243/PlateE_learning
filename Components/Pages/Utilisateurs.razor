@@ -1,0 +1,54 @@
+@page "/utilisateurs"
+@using PlateE_learning.Models
+@inject PlateE_learning.Data.AppDbContext _context
+
+<h3>Gestion des utilisateurs</h3>
+
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>Nom complet</th>
+            <th>Email</th>
+            <th>Rôle</th>
+            <th>Date inscription</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var user in utilisateurs)
+        {
+            <tr>
+                <td>@user.NomComplet</td>
+                <td>@user.Email</td>
+                <td>@user.Role</td>
+                <td>@user.DateInscription.ToShortDateString()</td>
+                <td>
+                    <button class="btn btn-danger btn-sm" @onclick="() => SupprimerUtilisateur(user.Id)">Supprimer</button>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@code {
+    private List<Utilisateur> utilisateurs = new();
+
+    protected override void OnInitialized()
+    {
+        // Charger tous les utilisateurs depuis la base
+        utilisateurs = _context.Utilisateurs.ToList();
+    }
+
+    private async Task SupprimerUtilisateur(int id)
+    {
+        var user = await _context.Utilisateurs.FindAsync(id);
+        if (user != null)
+        {
+            _context.Utilisateurs.Remove(user);
+            await _context.SaveChangesAsync();
+
+            // Mettre à jour la liste après suppression
+            utilisateurs = _context.Utilisateurs.ToList();
+        }
+    }
+}

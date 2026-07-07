@@ -1,0 +1,58 @@
+@page "/cours-non-autorises"
+@using PlateE_learning.Models
+@using CoursModel = PlateE_learning.Models.Cours
+@inject PlateE_learning.Data.AppDbContext _context
+
+<h3>Cours non autorisés</h3>
+
+<table class="table table-bordered">
+    <thead>
+        <tr>
+            <th>Titre</th>
+            <th>Description</th>
+            <th>Type</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var cours in coursNonAutorises)
+        {
+            <tr>
+                <td>@cours.Titre</td>
+                <td>@cours.Description</td>
+                <td>@cours.Type</td>
+                <td>
+                    <button class="btn btn-danger btn-sm" @onclick="() => SupprimerCours(cours.Id)">Supprimer</button>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@code {
+    private List<CoursModel> coursNonAutorises = new();
+
+    protected override void OnInitialized()
+    {
+        // Charger les cours non autorisés depuis la base
+        // Ici, on suppose qu’un cours non autorisé est marqué par une condition (ex. Type == null ou flag spécifique)
+        coursNonAutorises = _context.Cours
+            .Where(c => string.IsNullOrEmpty(c.Type)) // exemple de critère
+            .ToList();
+    }
+
+    private async Task SupprimerCours(int id)
+    {
+        var cours = await _context.Cours.FindAsync(id);
+        if (cours != null)
+        {
+            _context.Cours.Remove(cours);
+            await _context.SaveChangesAsync();
+
+            // Mettre à jour la liste après suppression
+            coursNonAutorises = _context.Cours
+                .Where(c => string.IsNullOrEmpty(c.Type))
+                .ToList();
+        }
+    }
+}

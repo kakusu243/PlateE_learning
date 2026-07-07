@@ -1,0 +1,34 @@
+@page "/chapitre"
+@using PlateE_learning.Models
+@using ChapitreModel = PlateE_learning.Models.Chapitre
+
+<h3>Ajouter un chapitre</h3>
+
+<EditForm Model="@chapitre" OnValidSubmit="HandleSubmit">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <div>
+        <label>Titre :</label>
+        <InputText @bind-Value="chapitre.Titre" />
+    </div>
+    <div>
+        <label>Contenu :</label>
+        <InputTextArea @bind-Value="chapitre.Contenu" />
+    </div>
+    <div>
+        <label>Ordre :</label>
+        <InputNumber @bind-Value="chapitre.Ordre" />
+    </div>
+
+    <button type="submit" class="btn btn-primary">Ajouter</button>
+</EditForm>
+
+@code {
+    private ChapitreModel chapitre = new();
+
+    private void HandleSubmit()
+    {
+        // TODO: sauvegarder en base
+    }
+}

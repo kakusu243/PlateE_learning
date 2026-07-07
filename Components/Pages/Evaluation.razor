@@ -1,0 +1,43 @@
+@page "/evaluation"
+@using PlateE_learning.Models
+@using EvaluationModel = PlateE_learning.Models.Evaluation
+@inject PlateE_learning.Data.AppDbContext _context
+
+<h3>Créer une évaluation</h3>
+
+<EditForm Model="@evaluation" OnValidSubmit="HandleSubmit">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <div>
+        <label>Type :</label>
+        <InputSelect @bind-Value="evaluation.Type">
+            <option value="QCM">QCM</option>
+            <option value="Sondage">Sondage</option>
+        </InputSelect>
+    </div>
+    <div>
+        <label>Questions :</label>
+        <InputTextArea @bind-Value="evaluation.Questions" />
+    </div>
+    <div>
+        <label>Note maximale :</label>
+        <InputNumber @bind-Value="evaluation.NoteMax" />
+    </div>
+
+    <button type="submit" class="btn btn-success">Créer</button>
+</EditForm>
+
+@code {
+    private EvaluationModel evaluation = new EvaluationModel();
+
+    private async Task HandleSubmit()
+    {
+        // Ajout de l’évaluation en base
+        _context.Evaluations.Add(evaluation);
+        await _context.SaveChangesAsync();
+
+        // Réinitialiser le formulaire
+        evaluation = new EvaluationModel();
+    }
+}

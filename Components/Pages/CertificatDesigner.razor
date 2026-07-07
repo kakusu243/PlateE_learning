@@ -1,0 +1,44 @@
+@page "/certificat-designer"
+@using PlateE_learning.Models
+@using CertificatModel = PlateE_learning.Models.Certificat
+@inject PlateE_learning.Data.AppDbContext _context
+
+<h3>Personnaliser le certificat</h3>
+
+<EditForm Model="@certificat" OnValidSubmit="HandleSave">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <div>
+        <label>Titre du cours :</label>
+        <InputText @bind-Value="certificat.TitreCours" />
+    </div>
+    <div>
+        <label>Nom du signataire :</label>
+        <InputText @bind-Value="certificat.Signataire" />
+    </div>
+    <div>
+        <label>Description :</label>
+        <InputTextArea @bind-Value="certificat.Description" />
+    </div>
+
+    <button type="submit" class="btn btn-primary">Enregistrer</button>
+</EditForm>
+
+@code {
+    private CertificatModel certificat = new CertificatModel();
+
+    private async Task HandleSave()
+    {
+        // Générer un numéro unique et la date
+        certificat.NumeroUnique = Guid.NewGuid().ToString();
+        certificat.DateEmission = DateTime.Now;
+
+        // Sauvegarde en base
+        _context.Certificats.Add(certificat);
+        await _context.SaveChangesAsync();
+
+        // Réinitialiser le formulaire
+        certificat = new CertificatModel();
+    }
+}

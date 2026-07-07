@@ -1,0 +1,33 @@
+@page "/dashboard"
+@using PlateE_learning.Models
+@inject PlateE_learning.Data.AppDbContext _context
+
+<h3>Tableau de bord Administrateur</h3>
+
+<div class="card p-3">
+    <h5>Statistiques générales</h5>
+    <ul>
+        <li>Apprenants inscrits : @apprenantsCount</li>
+        <li>Cours actifs : @coursCount</li>
+        <li>Certificats délivrés : @certificatsCount</li>
+    </ul>
+</div>
+
+<div class="mt-3">
+    <NavLink href="/utilisateurs" class="btn btn-secondary">Gérer les utilisateurs</NavLink>
+    <NavLink href="/cours-non-autorises" class="btn btn-danger">Cours non autorisés</NavLink>
+</div>
+
+@code {
+    private int apprenantsCount;
+    private int coursCount;
+    private int certificatsCount;
+
+    protected override void OnInitialized()
+    {
+        // Charger les statistiques depuis la base
+        apprenantsCount = _context.Utilisateurs.Count(u => u.Role == "Apprenant");
+        coursCount = _context.Cours.Count();
+        certificatsCount = _context.Certificats.Count();
+    }
+}

@@ -52,6 +52,20 @@
               "target": "Package",
               "version": "[10.0.8, )",
               "autoReferenced": true
+            },
+            "Microsoft.EntityFrameworkCore.Design": {
+              "include": "Runtime, Build, Native, ContentFiles, Analyzers, BuildTransitive",
+              "suppressParent": "All",
+              "target": "Package",
+              "version": "[9.0.9, )"
+            },
+            "Pomelo.EntityFrameworkCore.MySql": {
+              "target": "Package",
+              "version": "[9.0.0, )"
+            },
+            "QuestPDF": {
+              "target": "Package",
+              "version": "[2026.7.0, )"
             }
           },
           "imports": [

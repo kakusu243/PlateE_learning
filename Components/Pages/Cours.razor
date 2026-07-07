@@ -1,0 +1,43 @@
+@page "/cours"
+@using PlateE_learning.Models
+@using CoursModel = PlateE_learning.Models.Cours
+@inject PlateE_learning.Data.AppDbContext _context
+
+<h3>Créer un nouveau cours</h3>
+
+<EditForm Model="@cours" OnValidSubmit="HandleSubmit">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <div>
+        <label>Titre :</label>
+        <InputText @bind-Value="cours.Titre" />
+    </div>
+    <div>
+        <label>Description :</label>
+        <InputTextArea @bind-Value="cours.Description" />
+    </div>
+    <div>
+        <label>Type :</label>
+        <InputSelect @bind-Value="cours.Type">
+            <option value="Texte">Texte</option>
+            <option value="Vidéo">Vidéo</option>
+        </InputSelect>
+    </div>
+
+    <button type="submit" class="btn btn-primary">Créer</button>
+</EditForm>
+
+@code {
+    private CoursModel cours = new CoursModel();
+
+    private async Task HandleSubmit()
+    {
+        // Ajout du cours en base
+        _context.Cours.Add(cours);
+        await _context.SaveChangesAsync();
+
+        // Réinitialiser le formulaire
+        cours = new CoursModel();
+    }
+}

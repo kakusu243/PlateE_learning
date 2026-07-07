@@ -1,0 +1,59 @@
+@page "/inscription"
+@using PlateE_learning.Models
+@using CoursModel = PlateE_learning.Models.Cours
+@inject PlateE_learning.Data.AppDbContext _context
+
+<h3>Inscription à un cours</h3>
+
+<EditForm Model="@apprenant" OnValidSubmit="HandleInscription">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <div>
+        <label>Nom complet :</label>
+        <InputText @bind-Value="apprenant.NomComplet" />
+    </div>
+    <div>
+        <label>Email :</label>
+        <InputText @bind-Value="apprenant.Email" />
+    </div>
+    <div>
+        <label>Cours :</label>
+        <InputSelect @bind-Value="selectedCoursId">
+            @foreach (var cours in coursDisponibles)
+            {
+                <option value="@cours.Id">@cours.Titre</option>
+            }
+        </InputSelect>
+    </div>
+
+    <button type="submit" class="btn btn-primary">S'inscrire</button>
+</EditForm>
+
+@code {
+    private Apprenant apprenant = new Apprenant();
+    private List<CoursModel> coursDisponibles = new();
+    private int selectedCoursId;
+
+    protected override void OnInitialized()
+    {
+        // Charger les cours disponibles depuis la base
+        coursDisponibles = _context.Cours.ToList();
+    }
+
+    private async Task HandleInscription()
+    {
+        // Associer l’apprenant au cours choisi
+        var cours = await _context.Cours.FindAsync(selectedCoursId);
+        if (cours != null)
+        {
+            apprenant.CoursSuivis.Add(cours);
+        }
+
+        apprenant.DateInscription = DateTime.Now;
+        apprenant.Role = "Apprenant";
+
+        _context.Utilisateurs.Add(apprenant);
+        await _context.SaveChangesAsync();
+    }
+}

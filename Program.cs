@@ -1,27 +1,34 @@
-using PlateE_learning.Components;
+using Microsoft.EntityFrameworkCore;
+using PlateE_learning.Data;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-builder.Services.AddRazorComponents()
-    .AddInteractiveServerComponents();
+// 🔗 Connexion MySQL (via Pomelo)
+builder.Services.AddDbContext<AppDbContext>(options =>
+    options.UseMySql(
+        builder.Configuration.GetConnectionString("DefaultConnection"),
+        new MySqlServerVersion(new Version(8, 0, 36)) // adapte à ta version MySQL
+    )
+);
+
+// ⚙️ Services Blazor
+builder.Services.AddRazorPages();
+builder.Services.AddServerSideBlazor();
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
+// 🔧 Pipeline HTTP
 if (!app.Environment.IsDevelopment())
 {
-    app.UseExceptionHandler("/Error", createScopeForErrors: true);
-    // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
+    app.UseExceptionHandler("/Error");
     app.UseHsts();
 }
-app.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages: true);
+
 app.UseHttpsRedirection();
+app.UseStaticFiles();
+app.UseRouting();
 
-app.UseAntiforgery();
-
-app.MapStaticAssets();
-app.MapRazorComponents<App>()
-    .AddInteractiveServerRenderMode();
+app.MapBlazorHub();
+app.MapFallbackToPage("/_Host");
 
 app.Run();
