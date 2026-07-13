@@ -12,10 +12,17 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 );
 
 // ⚙️ Services Blazor
-builder.Services.AddRazorPages();
+builder.Services.AddRazorPages(options =>
+{
+    // Change la racine des Razor Pages vers Components/Pages
+    options.RootDirectory = "/Components/Pages";
+});
 builder.Services.AddServerSideBlazor();
+builder.Services.AddSingleton<CurrentUserService>();
 
 var app = builder.Build();
+
+SeedData.EnsureSeedData(app);
 
 // 🔧 Pipeline HTTP
 if (!app.Environment.IsDevelopment())

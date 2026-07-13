@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("PlateE_learning")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+fc1ca28c47ba848d89a1200099dff8ec6956660a")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+1d530ce8cb843d076cf4a7e2d54dde032f56f386")]
 [assembly: System.Reflection.AssemblyProductAttribute("PlateE_learning")]
 [assembly: System.Reflection.AssemblyTitleAttribute("PlateE_learning")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

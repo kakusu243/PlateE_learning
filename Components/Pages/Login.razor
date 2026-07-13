@@ -1,0 +1,91 @@
+@page "/login"
+@using System.ComponentModel.DataAnnotations
+@using Microsoft.AspNetCore.Components.Forms
+@inject NavigationManager Navigation
+@inject PlateE_learning.Data.AppDbContext _context
+@inject PlateE_learning.Data.CurrentUserService CurrentUserService
+
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-12 col-lg-10">
+            <div class="card shadow-sm">
+                <div class="card-body p-4 d-flex flex-column flex-lg-row align-items-stretch gap-4">
+                    <div class="login-form flex-fill">
+                        <h4 class="card-title mb-3">Se connecter</h4>
+
+                        <EditForm Model="Credentials" OnValidSubmit="HandleValidSubmit">
+                        <DataAnnotationsValidator />
+                        <ValidationSummary />
+
+                        <div class="mb-3">
+                            <label class="form-label">Adresse e-mail</label>
+                            <InputText @bind-Value="Credentials.Email" class="form-control" placeholder="adresse@exemple.com" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Mot de passe</label>
+                            <InputText @bind-Value="Credentials.Password" type="password" class="form-control" />
+                        </div>
+
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <div class="form-check">
+                                <InputCheckbox @bind-Value="Credentials.RememberMe" class="form-check-input" id="rememberMe" />
+                                <label class="form-check-label" for="rememberMe">Se souvenir</label>
+                            </div>
+                            <a href="#" class="small">Mot de passe oublié ?</a>
+                        </div>
+
+                        @if (!string.IsNullOrEmpty(ErrorMessage))
+                        {
+                            <div class="alert alert-danger">@ErrorMessage</div>
+                        }
+
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-cta">Se connecter</button>
+                        </div>
+                    </EditForm>
+
+                        <div class="mt-3 text-center">
+                            <small>Pas de compte ? <a href="/inscription">S'inscrire</a></small>
+                        </div>
+                    </div>
+                    <div class="login-image-wrapper d-none d-lg-flex align-items-center justify-content-center">
+                        <img src="images/Login_image.jpg" alt="login_image" class="login-image" />
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    class LoginModel
+    {
+        [Required(ErrorMessage = "L'adresse e-mail est requise")]
+        [EmailAddress(ErrorMessage = "Adresse e-mail invalide")]
+        public string? Email { get; set; }
+
+        [Required(ErrorMessage = "Le mot de passe est requis")]
+        public string? Password { get; set; }
+
+        public bool RememberMe { get; set; }
+    }
+
+    LoginModel Credentials = new();
+    string ErrorMessage = string.Empty;
+
+    async Task HandleValidSubmit()
+    {
+        var user = _context.Utilisateurs
+            .FirstOrDefault(u => u.Email == Credentials.Email && u.MotDePasse == Credentials.Password);
+
+        if (user != null)
+        {
+            CurrentUserService.SetUser(user);
+            Navigation.NavigateTo("/");
+            return;
+        }
+
+        ErrorMessage = "Identifiants incorrects.";
+    }
+}

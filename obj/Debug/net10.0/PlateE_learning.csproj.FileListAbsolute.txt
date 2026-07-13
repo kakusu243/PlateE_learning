@@ -113,7 +113,6 @@ C:\Users\johns\Downloads\E-learning\PlateE_learning\obj\Debug\net10.0\scopedcss\
 C:\Users\johns\Downloads\E-learning\PlateE_learning\obj\Debug\net10.0\scopedcss\Components\Layout\ReconnectModal.razor.rz.scp.css
 C:\Users\johns\Downloads\E-learning\PlateE_learning\obj\Debug\net10.0\scopedcss\bundle\PlateE_learning.styles.css
 C:\Users\johns\Downloads\E-learning\PlateE_learning\obj\Debug\net10.0\scopedcss\projectbundle\PlateE_learning.bundle.scp.css
-C:\Users\johns\Downloads\E-learning\PlateE_learning\obj\Debug\net10.0\compressed\krb6hhkwsm-{0}-khy4lop6wu-khy4lop6wu.gz
 C:\Users\johns\Downloads\E-learning\PlateE_learning\obj\Debug\net10.0\compressed\n7hnot68xo-{0}-bqjiyaj88i-bqjiyaj88i.gz
 C:\Users\johns\Downloads\E-learning\PlateE_learning\obj\Debug\net10.0\compressed\dhvygomvt4-{0}-c2jlpeoesf-c2jlpeoesf.gz
 C:\Users\johns\Downloads\E-learning\PlateE_learning\obj\Debug\net10.0\compressed\bfyt73ugpv-{0}-erw9l3u2r3-erw9l3u2r3.gz
@@ -212,3 +211,6 @@ C:\Users\johns\Downloads\E-learning\PlateE_learning\bin\Debug\net10.0\runtimes\w
 C:\Users\johns\Downloads\E-learning\PlateE_learning\bin\Debug\net10.0\runtimes\win-x86\native\qpdf.dll
 C:\Users\johns\Downloads\E-learning\PlateE_learning\obj\Debug\net10.0\PlateE_learning.RazorAssemblyInfo.cache
 C:\Users\johns\Downloads\E-learning\PlateE_learning\obj\Debug\net10.0\PlateE_learning.RazorAssemblyInfo.cs
+C:\Users\johns\Downloads\E-learning\PlateE_learning\obj\Debug\net10.0\compressed\krb6hhkwsm-{0}-eiqm04cy4d-eiqm04cy4d.gz
+C:\Users\johns\Downloads\E-learning\PlateE_learning\obj\Debug\net10.0\compressed\2sz1lrw0au-{0}-9x1xf94kol-9x1xf94kol.gz
+C:\Users\johns\Downloads\E-learning\PlateE_learning\obj\Debug\net10.0\compressed\n4gruvxrdt-{0}-4w3stnr4yl-4w3stnr4yl.gz

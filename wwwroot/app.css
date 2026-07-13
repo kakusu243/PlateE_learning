@@ -58,3 +58,215 @@ h1:focus {
 .form-floating > .form-control-plaintext:focus::placeholder, .form-floating > .form-control:focus::placeholder {
     text-align: start;
 }
+
+/* Homepage and layout styles */
+body {
+    background: #f4f8ff;
+}
+
+.app-shell {
+    min-height: 100vh;
+}
+
+.top-navbar {
+    position: sticky;
+    top: 0;
+    z-index: 1030;
+    box-shadow: 0 2px 16px rgba(15, 23, 42, 0.08);
+}
+
+.navbar-brand {
+    color: #12263f;
+    font-size: 1.4rem;
+}
+
+.navbar-nav .nav-link {
+    color: #334155;
+    font-weight: 500;
+}
+
+.navbar-nav .nav-link.active,
+.navbar-nav .nav-link:hover {
+    color: #1d4ed8;
+}
+
+.btn-cta,
+.btn-primary {
+    background-color: #ff7a00;
+    border-color: #ff7a00;
+    color: #fff;
+}
+
+.btn-cta:hover,
+.btn-primary:hover {
+    background-color: #ec6600;
+    border-color: #ec6600;
+}
+
+.hero-section {
+    position: relative;
+    overflow: hidden;
+    padding: 5rem 0;
+    background: linear-gradient(135deg, #0f4b8f 0%, #1466b8 45%, #4b9cf5 100%);
+}
+
+.hero-section .hero-overlay {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at 20% 20%, rgba(255,255,255,0.18), transparent 30%),
+                radial-gradient(circle at 80% 30%, rgba(255,255,255,0.12), transparent 30%);
+}
+
+.hero-content {
+    position: relative;
+    z-index: 1;
+}
+
+.hero-section .eyebrow {
+    display: inline-block;
+    margin-bottom: 1rem;
+    color: #dbeafe;
+    font-size: 0.95rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.hero-section h1,
+.hero-section p {
+    color: #fff;
+}
+
+.hero-section h1 {
+    font-size: clamp(2.5rem, 5vw, 4rem);
+    line-height: 1.05;
+}
+
+.hero-section .lead {
+    max-width: 560px;
+}
+
+.hero-image {
+    max-width: 100%;
+    border-radius: 1.5rem;
+    box-shadow: 0 30px 70px rgba(6, 45, 102, 0.2);
+}
+
+.courses-section,
+.about-section,
+.testimonials-section,
+.cta-section {
+    padding-top: 4rem;
+    padding-bottom: 4rem;
+}
+
+.section-header h2 {
+    font-size: 2.5rem;
+    color: #0f172a;
+}
+
+.section-header p {
+    color: #64748b;
+    font-size: 1rem;
+}
+
+.course-card {
+    border: 0;
+    border-radius: 1.5rem;
+    overflow: hidden;
+    background: #ffffff;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.course-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 24px 70px rgba(15, 23, 42, 0.12);
+}
+
+.course-card img {
+    height: 220px;
+    width: 100%;
+    object-fit: cover;
+}
+
+.teacher-avatar {
+    width: 48px;
+    height: 48px;
+    object-fit: cover;
+    border-radius: 50%;
+    border: 2px solid #fff;
+    box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.08);
+}
+
+.course-card .card-body {
+    padding: 1.5rem;
+}
+
+.course-card .rating {
+    font-weight: 700;
+    color: #222f6c;
+}
+
+.feature-box {
+    background: #fff;
+}
+
+.testimonial-card {
+    background: #fff;
+}
+
+.testimonial-card .testimonial-content {
+    min-height: 220px;
+}
+
+.cta-box {
+    background: linear-gradient(90deg, rgba(14, 50, 105, 0.95), rgba(34, 119, 255, 0.9));
+    color: #fff;
+}
+
+.cta-box a.btn-outline-primary {
+    border-color: rgba(255,255,255,0.7);
+    color: #fff;
+}
+
+.cta-box a.btn-outline-primary:hover {
+    background: rgba(255,255,255,0.1);
+}
+
+.card-body.d-flex {
+    align-items: stretch;
+    gap: 1.5rem;
+}
+
+.login-image-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 300px;
+}
+
+.login-image {
+    width: 300px;
+    height: auto;
+    object-fit: cover;
+    border-radius: 1rem;
+}
+
+.course-detail-image {
+    width: 100%;
+    max-height: 360px;
+    object-fit: cover;
+}
+
+.instructor-card {
+    min-width: 220px;
+}
+
+@media (max-width: 991.98px) {
+    .hero-section {
+        padding: 4rem 0;
+    }
+
+    .hero-section .hero-image {
+        margin-top: 2rem;
+    }
+}

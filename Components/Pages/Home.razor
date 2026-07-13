@@ -1,51 +1,81 @@
 ﻿@page "/"
 @using PlateE_learning.Models
 
-<!-- Hero Section -->
-<section class="hero bg-primary text-white text-center py-5">
-    <div class="container">
-        <h1 class="display-4 fw-bold">Apprenez en ligne à votre rythme</h1>
-        <p class="lead">Des centaines de cours pour développer vos compétences</p>
-        <div class="mt-4">
-            <a href="/inscription" class="btn btn-warning btn-lg me-3">S'inscrire Maintenant</a>
-            <a href="/cours" class="btn btn-outline-light btn-lg">En savoir plus</a>
+<section class="hero-section" id="home">
+    <div class="hero-overlay"></div>
+    <div class="container hero-content">
+        <div class="row align-items-center gy-4">
+            <div class="col-lg-6 text-white">
+                <span class="eyebrow">PlateE-Learning</span>
+                <h1 class="display-5 fw-bold">Formez-vous. Certifiez-vous, Réussissez.</h1>
+                <p class="lead mb-4">Apprenez à votre rythme et obtenez des certifications reconnues pour booster votre carrière.</p>
+                <div class="d-flex flex-wrap gap-3">
+                    <a href="/inscription" class="btn btn-cta btn-lg">Commencer un cours</a>
+                    <a href="#cours" class="btn btn-outline-light btn-lg">Voir les cours</a>
+                </div>
+            </div>
+            <div class="col-lg-6 text-center">
+                <img src="images/hero-student.png" class="img-fluid hero-image" alt="Illustration étudiant" />
+            </div>
         </div>
     </div>
 </section>
 
-<!-- Cours Populaires -->
-<section class="py-5 bg-light">
-    <div class="container text-center">
-        <h2 class="fw-bold mb-4">Cours Populaires</h2>
-        <p class="text-muted mb-5">Explorez nos formations les plus suivies</p>
+<section class="courses-section py-5" id="cours">
+    <div class="container">
+        <div class="section-header text-center mb-5">
+            <h2 class="fw-bold">Cours Populaires</h2>
+            <p class="text-muted">Explorez nos formations les plus suivies.</p>
+        </div>
 
-        <div class="row">
-            <div class="col-md-4 mb-4">
-                <div class="card shadow-sm">
-                    <img src="images/devweb.jpg" class="card-img-top" alt="Développement Web">
+        <div class="row g-4">
+            <div class="col-md-4">
+                <div class="course-card shadow-sm rounded overflow-hidden">
+                    <img src="images/devweb.jpg" class="card-img-top" alt="Développement Web" />
                     <div class="card-body">
                         <h5 class="card-title">Développement Web</h5>
-                        <p class="card-text text-muted">12 Modules • 4.8 ★★★★☆ (320)</p>
+                        <p class="card-text text-muted mb-3">12 Modules</p>
+                        <div class="d-flex align-items-center justify-content-between">
+                            <div>
+                                <span class="rating">4.8</span>
+                                <span class="text-muted">(320)</span>
+                            </div>
+                            <span class="badge bg-primary">Populaire</span>
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <div class="col-md-4 mb-4">
-                <div class="card shadow-sm">
-                    <img src="images/marketing.jpg" class="card-img-top" alt="Marketing Digital">
+            <div class="col-md-4">
+                <div class="course-card shadow-sm rounded overflow-hidden">
+                    <img src="images/marketing.jpg" class="card-img-top" alt="Marketing Digital" />
                     <div class="card-body">
                         <h5 class="card-title">Marketing Digital</h5>
-                        <p class="card-text text-muted">10 Modules • 4.7 ★★★★☆ (280)</p>
+                        <p class="card-text text-muted mb-3">12 Modules</p>
+                        <div class="d-flex align-items-center justify-content-between">
+                            <div>
+                                <span class="rating">4.8</span>
+                                <span class="text-muted">(320)</span>
+                            </div>
+                            <span class="badge bg-primary">Recommandé</span>
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <div class="col-md-4 mb-4">
-                <div class="card shadow-sm">
-                    <img src="images/projet.jpg" class="card-img-top" alt="Gestion de Projet">
+            <div class="col-md-4">
+                <div class="course-card shadow-sm rounded overflow-hidden">
+                    <img src="images/projet.jpg" class="card-img-top" alt="Gestion de Projet" />
                     <div class="card-body">
                         <h5 class="card-title">Gestion de Projet</h5>
-                        <p class="card-text text-muted">8 Modules • 4.9 ★★★★★ (410)</p>
+                        <p class="card-text text-muted mb-3">12 Modules</p>
+                        <div class="d-flex align-items-center justify-content-between">
+                            <div>
+                                <span class="rating">4.8</span>
+                                <span class="text-muted">(320)</span>
+                            </div>
+                            <span class="badge bg-primary">Nouveau</span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -53,53 +83,73 @@
     </div>
 </section>
 
-<!-- Témoignages -->
-<section class="py-5">
-    <div class="container text-center">
-        <h2 class="fw-bold mb-4">Ce Que Disent Nos Apprenants</h2>
-        <div class="row">
-            <div class="col-md-4 mb-4">
-                <div class="card border-0 shadow-sm">
-                    <img src="images/marie.jpg" class="rounded-circle mx-auto mt-3" width="100" alt="Marie L.">
-                    <div class="card-body">
-                        <p class="fst-italic">"Une plateforme fantastique ! J'ai appris tant de choses."</p>
-                        <h6 class="fw-bold">Marie L.</h6>
-                        <p class="text-warning">★★★★★</p>
-                    </div>
-                </div>
-            </div>
-
-            <div class="col-md-4 mb-4">
-                <div class="card border-0 shadow-sm">
-                    <img src="images/thomas.jpg" class="rounded-circle mx-auto mt-3" width="100" alt="Thomas D.">
-                    <div class="card-body">
-                        <p class="fst-italic">"Les cours sont clairs et très bien structurés."</p>
-                        <h6 class="fw-bold">Thomas D.</h6>
-                        <p class="text-warning">★★★★★</p>
-                    </div>
-                </div>
-            </div>
-
-            <div class="col-md-4 mb-4">
-                <div class="card border-0 shadow-sm">
-                    <img src="images/sophie.jpg" class="rounded-circle mx-auto mt-3" width="100" alt="Sophie M.">
-                    <div class="card-body">
-                        <p class="fst-italic">"Grâce à cette formation, j'ai trouvé un nouvel emploi !"</p>
-                        <h6 class="fw-bold">Sophie M.</h6>
-                        <p class="text-warning">★★★★★</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</section>
-
-<!-- Call to Action -->
-<section class="bg-primary text-white text-center py-5">
+<section class="about-section py-5" id="apropos">
     <div class="container">
-        <h2 class="fw-bold">Rejoignez-nous dès aujourd'hui !</h2>
-        <p class="lead mb-4">Inscrivez-vous et commencez votre parcours d'apprentissage dès maintenant.</p>
-        <a href="/inscription" class="btn btn-warning btn-lg me-3">S'inscrire</a>
-        <a href="/login" class="btn btn-outline-light btn-lg">Se Connecter</a>
+        <div class="row align-items-center">
+            <div class="col-lg-6 mb-4 mb-lg-0">
+                <h2 class="fw-bold">La meilleure façon d'apprendre en ligne</h2>
+                <p class="text-muted">Des parcours complets, des mentors expérimentés et des certifications pour booster votre carrière.</p>
+                <ul class="list-unstyled text-muted">
+                    <li class="mb-2">✔ Cours élaborés par des experts</li>
+                    <li class="mb-2">✔ Accès à vie et suivi personnalisé</li>
+                    <li>✔ Certificats reconnus à la fin de chaque parcours</li>
+                </ul>
+            </div>
+            <div class="col-lg-6">
+                <div class="feature-box p-4 shadow-sm rounded bg-white">
+                    <h5 class="fw-bold mb-3">Découvrez un apprentissage flexible</h5>
+                    <p class="text-muted">Passez de débutant à expert avec des ressources interactives, des cas pratiques et un accompagnement adapté.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="testimonials-section py-5 bg-light" id="temoignages">
+    <div class="container text-center">
+        <div class="section-header mb-5">
+            <h2 class="fw-bold">Ce Que Disent Nos Apprenants</h2>
+        </div>
+
+        <div class="row g-4">
+            <div class="col-md-4">
+                <div class="testimonial-card shadow-sm rounded p-4 h-100">
+                    <div class="testimonial-content">
+                        <p class="text-muted fst-italic">"Une plateforme fantastique ! J'ai appris tant de choses."</p>
+                        <h6 class="fw-bold mt-4">Marie L.</h6>
+                        <p class="text-warning mb-0">★★★★★</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="testimonial-card shadow-sm rounded p-4 h-100">
+                    <div class="testimonial-content">
+                        <p class="text-muted fst-italic">"Les cours sont clairs et très bien structurés."</p>
+                        <h6 class="fw-bold mt-4">Thomas D.</h6>
+                        <p class="text-warning mb-0">★★★★★</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="testimonial-card shadow-sm rounded p-4 h-100">
+                    <div class="testimonial-content">
+                        <p class="text-muted fst-italic">"Grâce à cette formation, j'ai trouvé un nouvel emploi !"</p>
+                        <h6 class="fw-bold mt-4">Sophie M.</h6>
+                        <p class="text-warning mb-0">★★★★★</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="cta-section py-5">
+    <div class="container text-center">
+        <div class="cta-box rounded-4 p-5 shadow-sm">
+            <h2 class="fw-bold mb-3">Rejoignez-nous dès aujourd'hui !</h2>
+            <p class="text-muted mb-4">Inscrivez-vous et commencez votre parcours d'apprentissage des maintenant.</p>
+            <a href="/inscription" class="btn btn-cta btn-lg me-3">S'inscrire</a>
+            <a href="/login" class="btn btn-outline-primary btn-lg">Se Connecter</a>
+        </div>
     </div>
 </section>

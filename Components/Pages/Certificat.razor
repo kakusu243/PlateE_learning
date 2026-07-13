@@ -8,7 +8,7 @@
 
 <h3>Votre certificat</h3>
 
-@if (certificat != null)
+@if (certificat is not null)
 {
     <div class="card p-3">
         <h4>Certificat de Réussite</h4>
@@ -38,6 +38,11 @@ else
 
     private void DownloadPdf()
     {
+        if (certificat is null)
+            return;
+
+        var cert = certificat;
+
         // Génération PDF avec QuestPDF
         var document = QuestPDF.Fluent.Document.Create(container =>
         {
@@ -51,11 +56,11 @@ else
 
                 page.Content().Column(col =>
                 {
-                    col.Item().Text($"Apprenant : {certificat.NomApprenant}");
-                    col.Item().Text($"Cours : {certificat.TitreCours}");
-                    col.Item().Text($"Signataire : {certificat.Signataire}");
-                    col.Item().Text($"Date : {certificat.DateEmission.ToShortDateString()}");
-                    col.Item().Text($"Description : {certificat.Description}");
+                    col.Item().Text($"Apprenant : {cert.NomApprenant}");
+                    col.Item().Text($"Cours : {cert.TitreCours}");
+                    col.Item().Text($"Signataire : {cert.Signataire}");
+                    col.Item().Text($"Date : {cert.DateEmission.ToShortDateString()}");
+                    col.Item().Text($"Description : {cert.Description}");
                 });
 
                 page.Footer().AlignCenter().Text($"Numéro : {certificat.NumeroUnique}");

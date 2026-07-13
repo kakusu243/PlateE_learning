@@ -26,6 +26,12 @@ namespace PlateE_learning.Data
                 .WithOne()
                 .OnDelete(DeleteBehavior.Cascade);
 
+            modelBuilder.Entity<Cours>()
+                .HasOne(c => c.Enseignant)
+                .WithMany(e => e.CoursCrees)
+                .HasForeignKey(c => c.EnseignantId)
+                .OnDelete(DeleteBehavior.SetNull);
+
             modelBuilder.Entity<Apprenant>()
                 .HasMany(a => a.CoursSuivis)
                 .WithMany(c => c.Apprenants);

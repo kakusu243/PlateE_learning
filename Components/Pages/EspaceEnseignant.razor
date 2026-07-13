@@ -1,0 +1,147 @@
+@page "/espace-enseignant"
+@using PlateE_learning.Data
+@using ModelCours = PlateE_learning.Models.Cours
+@using Microsoft.EntityFrameworkCore
+@inject AppDbContext _context
+@inject CurrentUserService CurrentUserService
+
+<div class="container py-5">
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <h3 class="mb-3">Mon espace enseignant</h3>
+            <p class="text-muted mb-4">Bienvenue @CurrentUserService.CurrentUser?.NomComplet. Gère tes formations et consulte les performances.</p>
+
+            <div class="row g-4">
+                <div class="col-lg-4">
+                    <div class="feature-box p-4 rounded shadow-sm">
+                        <h5 class="fw-bold">Cours disponibles</h5>
+                        <p class="text-muted">Liste de tous les cours que tu peux animer ou enrichir.</p>
+                    </div>
+                </div>
+                <div class="col-lg-4">
+                    <div class="feature-box p-4 rounded shadow-sm">
+                        <h5 class="fw-bold">Actions rapides</h5>
+                        <p class="text-muted">Ajoute un nouveau cours ou mets à jour un cours existant depuis le back-office.</p>
+                    </div>
+                </div>
+                <div class="col-lg-4">
+                    <div class="feature-box p-4 rounded shadow-sm">
+                        <h5 class="fw-bold">Support</h5>
+                        <p class="text-muted">Besoin d’aide ? Contacte l’administrateur pour gérer tes contenus.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row g-4">
+                <div class="col-lg-6">
+                    <div class="card mb-4 shadow-sm">
+                        <div class="card-body">
+                            <h5 class="mb-3">Ajouter un nouveau cours</h5>
+                            <EditForm Model="@newCourse" OnValidSubmit="HandleCreateCourse">
+                                <DataAnnotationsValidator />
+                                <ValidationSummary />
+
+                                <div class="mb-3">
+                                    <label class="form-label">Titre du cours</label>
+                                    <InputText @bind-Value="newCourse.Titre" class="form-control" />
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label">Description courte</label>
+                                    <InputTextArea @bind-Value="newCourse.Description" class="form-control" Rows="3" />
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label">Type de cours</label>
+                                    <InputSelect @bind-Value="newCourse.Type" class="form-select">
+                                        <option value="Vidéo">Vidéo</option>
+                                        <option value="Texte">Texte</option>
+                                    </InputSelect>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label">URL de la miniature</label>
+                                    <InputText @bind-Value="newCourse.MiniatureUrl" class="form-control" />
+                                    <div class="form-text">Path relatif depuis wwwroot, par exemple <code>images/course-default.svg</code>.</div>
+                                </div>
+
+                                <button type="submit" class="btn btn-primary">Créer le cours</button>
+
+                                @if (!string.IsNullOrEmpty(formMessage))
+                                {
+                                    <div class="alert alert-success mt-3">@formMessage</div>
+                                }
+                            </EditForm>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-6">
+                    <div class="card mb-4 shadow-sm">
+                        <div class="card-body">
+                            <h5 class="mb-3">Cours existants</h5>
+                            @if (teacherCourses.Any())
+                            {
+                                <div class="row g-3">
+                                    @foreach (var cours in teacherCourses)
+                                    {
+                                        <div class="col-md-12">
+                                            <div class="card h-100 course-card">
+                                                <img src="@cours.MiniatureUrl" class="img-fluid" alt="Miniature de @cours.Titre" />
+                                                <div class="card-body">
+                                                    <h6 class="card-title">@cours.Titre</h6>
+                                                    <p class="card-text text-muted">@cours.Description</p>
+                                                    <div class="d-flex align-items-center gap-2">
+                                                        <img src="@(cours.Enseignant?.PhotoUrl ?? "images/avatar-default.svg")" alt="Photo du professeur" class="teacher-avatar" />
+                                                        <span class="small text-muted">@cours.Enseignant?.NomComplet ?? "Enseignant"</span>
+                                                    </div>
+                                                    <span class="badge bg-primary mt-2">@cours.Type</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="alert alert-info">Aucun cours trouvé pour le moment.</div>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private List<ModelCours> teacherCourses = new();
+    private ModelCours newCourse = new() { Type = "Vidéo", MiniatureUrl = "images/course-default.svg" };
+    private string formMessage = string.Empty;
+
+    protected override void OnInitialized()
+    {
+        teacherCourses = _context.Cours
+            .Include(c => c.Enseignant)
+            .ToList();
+    }
+
+    private async Task HandleCreateCourse()
+    {
+        if (CurrentUserService.CurrentUser is not Enseignant enseignant)
+        {
+            formMessage = "Vous devez être connecté en tant qu'enseignant pour créer un cours.";
+            return;
+        }
+
+        newCourse.EnseignantId = enseignant.Id;
+        newCourse.Enseignant = enseignant;
+
+        _context.Cours.Add(newCourse);
+        await _context.SaveChangesAsync();
+
+        formMessage = "Cours créé avec succès !";
+        teacherCourses.Add(newCourse);
+        newCourse = new ModelCours { Type = "Vidéo", MiniatureUrl = "images/course-default.svg" };
+    }
+}

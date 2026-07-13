@@ -1,0 +1,70 @@
+@page "/mes-cours"
+@using PlateE_learning.Data
+@using Microsoft.EntityFrameworkCore
+@using ModelCours = PlateE_learning.Models.Cours
+@inject AppDbContext _context
+@inject CurrentUserService CurrentUserService
+
+<div class="container py-5">
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <h3 class="mb-3">Mes cours</h3>
+            @if (!CurrentUserService.IsAuthenticated)
+            {
+                <div class="alert alert-warning">Connecte-toi pour voir tes cours.</div>
+            }
+            else if (CurrentUserService.Role != "Apprenant")
+            {
+                <div class="alert alert-info">Cette page est réservée aux apprenants.</div>
+            }
+            else
+            {
+                <p class="text-muted mb-4">Bonjour @CurrentUserService.CurrentUser?.NomComplet, voici les cours associés à ton profil.</p>
+
+                @if (enrolledCourses.Any())
+                {
+                    <div class="row g-4">
+                        @foreach (var cours in enrolledCourses)
+                        {
+                            <div class="col-md-6 col-xl-4">
+                                <div class="course-card shadow-sm rounded overflow-hidden h-100">
+                                    <div class="card-body d-flex flex-column">
+                                        <h5 class="card-title">@cours.Titre</h5>
+                                        <p class="card-text text-muted mb-3">@cours.Description</p>
+                                        <div class="mt-auto d-flex justify-content-between align-items-center">
+                                            <span class="badge bg-primary">@cours.Type</span>
+                                            <button class="btn btn-sm btn-cta" disabled>Voir</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <div class="alert alert-info">Tu n'es pas encore inscrit à un cours. Visite la page Cours pour t'inscrire.</div>
+                }
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    private List<ModelCours> enrolledCourses = new();
+
+    protected override void OnInitialized()
+    {
+        if (CurrentUserService.IsAuthenticated && CurrentUserService.Role == "Apprenant")
+        {
+            var apprenant = _context.Utilisateurs.OfType<Apprenant>()
+                .Include(a => a.CoursSuivis)
+                .FirstOrDefault(a => a.Id == CurrentUserService.CurrentUser!.Id);
+
+            if (apprenant != null)
+            {
+                enrolledCourses = apprenant.CoursSuivis.ToList();
+            }
+        }
+    }
+}

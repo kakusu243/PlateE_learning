@@ -1,59 +1,129 @@
 @page "/inscription"
+@using System.ComponentModel.DataAnnotations
+@using Microsoft.AspNetCore.Components.Forms
 @using PlateE_learning.Models
-@using CoursModel = PlateE_learning.Models.Cours
 @inject PlateE_learning.Data.AppDbContext _context
 
-<h3>Inscription à un cours</h3>
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-12 col-lg-10">
+            <div class="card shadow-sm">
+                <div class="card-body p-4 d-flex flex-column flex-lg-row align-items-stretch gap-4">
+                    <div class="login-form flex-fill">
+                        <h4 class="card-title mb-3">S'inscrire</h4>
 
-<EditForm Model="@apprenant" OnValidSubmit="HandleInscription">
-    <DataAnnotationsValidator />
-    <ValidationSummary />
+                        <EditForm Model="@registerModel" OnValidSubmit="HandleInscription">
+                            <DataAnnotationsValidator />
+                            <ValidationSummary />
 
-    <div>
-        <label>Nom complet :</label>
-        <InputText @bind-Value="apprenant.NomComplet" />
-    </div>
-    <div>
-        <label>Email :</label>
-        <InputText @bind-Value="apprenant.Email" />
-    </div>
-    <div>
-        <label>Cours :</label>
-        <InputSelect @bind-Value="selectedCoursId">
-            @foreach (var cours in coursDisponibles)
-            {
-                <option value="@cours.Id">@cours.Titre</option>
-            }
-        </InputSelect>
-    </div>
+                            <div class="mb-3">
+                                <label class="form-label">Nom :</label>
+                                <InputText @bind-Value="registerModel.Nom" class="form-control" />
+                            </div>
 
-    <button type="submit" class="btn btn-primary">S'inscrire</button>
-</EditForm>
+                            <div class="mb-3">
+                                <label class="form-label">Prénom :</label>
+                                <InputText @bind-Value="registerModel.Prenom" class="form-control" />
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">Adresse mail :</label>
+                                <InputText @bind-Value="registerModel.Email" type="email" class="form-control" />
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">Rôle :</label>
+                                <InputSelect @bind-Value="registerModel.Role" class="form-select">
+                                    <option value="Apprenant">Apprenant</option>
+                                    <option value="Enseignant">Enseignant</option>
+                                </InputSelect>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">Mot de passe :</label>
+                                <InputText @bind-Value="registerModel.Password" type="password" class="form-control" />
+                            </div>
+
+                            <div class="form-check mb-3">
+                                <InputCheckbox @bind-Value="registerModel.ReceiveInfo" class="form-check-input" id="receiveInfo" />
+                                <label class="form-check-label" for="receiveInfo">Je veux recevoir les informations du système dans ma boîte mail</label>
+                            </div>
+
+                            <div class="form-check mb-4">
+                                <InputCheckbox @bind-Value="registerModel.AcceptTerms" class="form-check-input" id="acceptTerms" />
+                                <label class="form-check-label" for="acceptTerms">J'ai lu et j'accepte les conditions d'utilisation de ce site</label>
+                            </div>
+
+                            <div class="d-grid">
+                                <button type="submit" class="btn btn-cta">S'inscrire</button>
+                            </div>
+                        </EditForm>
+
+                        <div class="mt-3 text-center">
+                            <small>Déjà inscrit ? <a href="/login">Se connecter</a></small>
+                        </div>
+                    </div>
+                    <div class="login-image-wrapper d-none d-lg-flex align-items-center justify-content-center">
+                        <img src="images/Login_image.jpg" alt="inscription_image" class="login-image" />
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (!string.IsNullOrEmpty(SuccessMessage))
+{
+    <div class="alert alert-success mt-3">@SuccessMessage</div>
+}
 
 @code {
-    private Apprenant apprenant = new Apprenant();
-    private List<CoursModel> coursDisponibles = new();
-    private int selectedCoursId;
+    private RegisterModel registerModel = new RegisterModel();
+    private string SuccessMessage = string.Empty;
 
     protected override void OnInitialized()
     {
-        // Charger les cours disponibles depuis la base
-        coursDisponibles = _context.Cours.ToList();
+        registerModel.Role = "Apprenant";
     }
 
     private async Task HandleInscription()
     {
-        // Associer l’apprenant au cours choisi
-        var cours = await _context.Cours.FindAsync(selectedCoursId);
-        if (cours != null)
+        var apprenant = new Apprenant
         {
-            apprenant.CoursSuivis.Add(cours);
-        }
-
-        apprenant.DateInscription = DateTime.Now;
-        apprenant.Role = "Apprenant";
+            NomComplet = $"{registerModel.Nom} {registerModel.Prenom}".Trim(),
+            Email = registerModel.Email,
+            Role = registerModel.Role,
+            DateInscription = DateTime.Now,
+            MotDePasse = registerModel.Password
+        };
 
         _context.Utilisateurs.Add(apprenant);
         await _context.SaveChangesAsync();
+
+        SuccessMessage = "Inscription réussie ! Vous allez bientôt recevoir un email si vous avez demandé les informations.";
+    }
+
+    private class RegisterModel
+    {
+        [Required(ErrorMessage = "Le nom est requis")]
+        public string Nom { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Le prénom est requis")]
+        public string Prenom { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "L'adresse mail est requise")]
+        [EmailAddress(ErrorMessage = "Adresse mail invalide")]
+        public string Email { get; set; } = string.Empty;
+
+        [Required]
+        public string Role { get; set; } = "Apprenant";
+
+        [Required(ErrorMessage = "Le mot de passe est requis")]
+        public string Password { get; set; } = string.Empty;
+
+        public bool ReceiveInfo { get; set; }
+
+        [Range(typeof(bool), "true", "true", ErrorMessage = "Vous devez accepter les conditions d'utilisation")]
+        public bool AcceptTerms { get; set; }
     }
 }

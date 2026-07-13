@@ -1,43 +1,229 @@
 @page "/cours"
 @using PlateE_learning.Models
-@using CoursModel = PlateE_learning.Models.Cours
+@using ModelCours = PlateE_learning.Models.Cours
+@using Microsoft.EntityFrameworkCore
 @inject PlateE_learning.Data.AppDbContext _context
+@inject PlateE_learning.Data.CurrentUserService CurrentUserService
+@inject NavigationManager Navigation
 
-<h3>Créer un nouveau cours</h3>
-
-<EditForm Model="@cours" OnValidSubmit="HandleSubmit">
-    <DataAnnotationsValidator />
-    <ValidationSummary />
-
-    <div>
-        <label>Titre :</label>
-        <InputText @bind-Value="cours.Titre" />
+<div class="container py-5">
+    @if (!string.IsNullOrEmpty(actionMessage))
+    {
+        <div class="alert alert-success">@actionMessage</div>
+    }
+    <div class="d-flex flex-column flex-md-row align-items-start justify-content-between gap-3 mb-4">
+        <div class="flex-fill">
+            <div class="input-group shadow-sm rounded overflow-hidden">
+                <input @bind="searchTerm" @bind:event="oninput" class="form-control border-end-0" placeholder="Rechercher un cours..." />
+                <button class="btn btn-outline-secondary" type="button" @onclick="() => searchTerm = string.Empty">Effacer</button>
+            </div>
+            <div class="d-flex flex-wrap gap-2 mt-3">
+                <button class="@GetFilterButtonClass(null)" @onclick="@(() => SetFilter(null))">Tous</button>
+                <button class="@GetFilterButtonClass(VideoType)" @onclick="@(() => SetFilter(VideoType))">Vidéos</button>
+                <button class="@GetFilterButtonClass(TextType)" @onclick="@(() => SetFilter(TextType))">Textes</button>
+            </div>
+        </div>
+        <div class="text-md-end">
+            <p class="mb-1 text-muted">@filteredCourses.Count cours trouvés</p>
+            <small class="text-muted">Filtre activé : @(selectedType ?? "Tous")</small>
+        </div>
     </div>
-    <div>
-        <label>Description :</label>
-        <InputTextArea @bind-Value="cours.Description" />
-    </div>
-    <div>
-        <label>Type :</label>
-        <InputSelect @bind-Value="cours.Type">
-            <option value="Texte">Texte</option>
-            <option value="Vidéo">Vidéo</option>
-        </InputSelect>
-    </div>
 
-    <button type="submit" class="btn btn-primary">Créer</button>
-</EditForm>
+    <div class="row g-4">
+        @if (filteredCourses.Any())
+        {
+            @foreach (var cours in filteredCourses)
+            {
+                <div class="col-md-6 col-xl-4">
+                    <div class="course-card shadow-sm rounded overflow-hidden h-100 bg-white">
+                        <img src="@cours.MiniatureUrl" class="img-fluid w-100" alt="Miniature du cours @cours.Titre" />
+                        <div class="card-body d-flex flex-column">
+                            <h5 class="card-title mb-2"><a href="@($"/cours/{cours.Id}")" class="text-dark text-decoration-none">@cours.Titre</a></h5>
+                            <p class="card-text text-muted mb-3">@cours.Description</p>
+
+                            <div class="d-flex align-items-center gap-3 mb-3">
+                                <img src="@(cours.Enseignant?.PhotoUrl ?? "images/avatar-default.svg")" alt="Photo de @cours.Enseignant?.NomComplet" class="teacher-avatar" />
+                                <div>
+                                    <div class="fw-semibold">@cours.Enseignant?.NomComplet ?? "Enseignant"</div>
+                                    <div class="text-muted small">Professeur</div>
+                                </div>
+                            </div>
+
+                            <div class="mt-auto d-flex justify-content-between align-items-center gap-2 flex-wrap">
+                                <span class="badge bg-primary">@cours.Type</span>
+                                <div>
+                                    <a class="btn btn-sm btn-outline-secondary me-2" href="@($"/cours/{cours.Id}")">Voir</a>
+                                    @if (CurrentUserService.IsAuthenticated && CurrentUserService.Role == "Apprenant")
+                                    {
+                                        if (enrolledCourseIds.Contains(cours.Id))
+                                        {
+                                            <button class="btn btn-sm btn-warning" @onclick="() => UnenrollAsync(cours.Id)">Se désinscrire</button>
+                                        }
+                                        else
+                                        {
+                                            <button class="btn btn-sm btn-primary" @onclick="() => EnrollAsync(cours.Id)">S'inscrire</button>
+                                        }
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        }
+        else
+        {
+            <div class="col-12">
+                <div class="alert alert-warning">Aucun cours ne correspond à votre recherche. Essayez un autre mot-clé ou filtre.</div>
+            </div>
+        }
+    </div>
+</div>
 
 @code {
-    private CoursModel cours = new CoursModel();
+    private string searchTerm = string.Empty;
+    private string? selectedType = null;
+    private List<ModelCours> courses = new();
+    private List<ModelCours> filteredCourses = new();
+    private HashSet<int> enrolledCourseIds = new();
+    private string actionMessage = string.Empty;
 
-    private async Task HandleSubmit()
+    protected override void OnInitialized()
     {
-        // Ajout du cours en base
-        _context.Cours.Add(cours);
+        courses = _context.Cours
+            .Include(c => c.Enseignant)
+            .ToList();
+        FilterCourses();
+        LoadEnrolledCourses();
+    }
+
+    private void LoadEnrolledCourses()
+    {
+        enrolledCourseIds.Clear();
+        if (CurrentUserService.IsAuthenticated && CurrentUserService.Role == "Apprenant")
+        {
+            var userId = CurrentUserService.CurrentUser?.Id;
+            if (userId == null) return;
+            var apprenant = _context.Utilisateurs.OfType<Apprenant>()
+                .Include(a => a.CoursSuivis)
+                .FirstOrDefault(a => a.Id == userId.Value);
+
+            if (apprenant != null)
+            {
+                foreach (var c in apprenant.CoursSuivis)
+                    enrolledCourseIds.Add(c.Id);
+            }
+        }
+    }
+
+    private const string VideoType = "Vidéo";
+    private const string TextType = "Texte";
+
+    private void SetFilter(string? type)
+    {
+        selectedType = type;
+        FilterCourses();
+    }
+
+    private void FilterCourses()
+    {
+        filteredCourses = courses
+            .Where(c => string.IsNullOrWhiteSpace(searchTerm) || c.Titre.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) || c.Description.Contains(searchTerm, StringComparison.OrdinalIgnoreCase))
+            .Where(c => selectedType == null || c.Type == selectedType)
+            .ToList();
+    }
+
+    private string GetFilterButtonClass(string? type)
+        => selectedType == type ? "btn btn-primary" : "btn btn-outline-secondary";
+
+    private async Task EnrollAsync(int coursId)
+    {
+        actionMessage = string.Empty;
+        if (!CurrentUserService.IsAuthenticated || CurrentUserService.Role != "Apprenant")
+        {
+            actionMessage = "Connecte-toi en tant qu'apprenant pour t'inscrire.";
+            return;
+        }
+
+        var userId = CurrentUserService.CurrentUser?.Id;
+        if (userId == null)
+        {
+            actionMessage = "Profil apprenant introuvable.";
+            return;
+        }
+
+        var apprenant = await _context.Utilisateurs.OfType<Apprenant>()
+            .Include(a => a.CoursSuivis)
+            .FirstOrDefaultAsync(a => a.Id == userId.Value);
+
+        if (apprenant == null)
+        {
+            actionMessage = "Profil apprenant introuvable.";
+            return;
+        }
+
+        var cours = await _context.Cours.FindAsync(coursId);
+        if (cours == null)
+        {
+            actionMessage = "Cours introuvable.";
+            return;
+        }
+
+        if (apprenant.CoursSuivis.Any(c => c.Id == coursId))
+        {
+            actionMessage = "Tu es déjà inscrit à ce cours.";
+            enrolledCourseIds.Add(coursId);
+            return;
+        }
+
+        apprenant.CoursSuivis.Add(cours);
         await _context.SaveChangesAsync();
 
-        // Réinitialiser le formulaire
-        cours = new CoursModel();
+        enrolledCourseIds.Add(coursId);
+        actionMessage = "Inscription réussie !";
+
+        // Redirect to course detail page
+        Navigation.NavigateTo($"/cours/{coursId}");
+    }
+
+    private async Task UnenrollAsync(int coursId)
+    {
+        actionMessage = string.Empty;
+        if (!CurrentUserService.IsAuthenticated || CurrentUserService.Role != "Apprenant")
+        {
+            actionMessage = "Connecte-toi en tant qu'apprenant pour te désinscrire.";
+            return;
+        }
+
+        var userId = CurrentUserService.CurrentUser?.Id;
+        if (userId == null)
+        {
+            actionMessage = "Profil apprenant introuvable.";
+            return;
+        }
+
+        var apprenant = await _context.Utilisateurs.OfType<Apprenant>()
+            .Include(a => a.CoursSuivis)
+            .FirstOrDefaultAsync(a => a.Id == userId.Value);
+
+        if (apprenant == null)
+        {
+            actionMessage = "Profil apprenant introuvable.";
+            return;
+        }
+
+        var cours = apprenant.CoursSuivis.FirstOrDefault(c => c.Id == coursId);
+        if (cours == null)
+        {
+            actionMessage = "Tu n'es pas inscrit à ce cours.";
+            enrolledCourseIds.Remove(coursId);
+            return;
+        }
+
+        apprenant.CoursSuivis.Remove(cours);
+        await _context.SaveChangesAsync();
+
+        enrolledCourseIds.Remove(coursId);
+        actionMessage = "Désinscription réussie.";
     }
 }

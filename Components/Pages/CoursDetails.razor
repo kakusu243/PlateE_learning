@@ -1,0 +1,196 @@
+@page "/cours/{id:int}"
+@using PlateE_learning.Models
+@using CoursModel = PlateE_learning.Models.Cours
+@using Microsoft.EntityFrameworkCore
+@inject PlateE_learning.Data.AppDbContext _context
+@inject PlateE_learning.Data.CurrentUserService CurrentUserService
+@inject NavigationManager Navigation
+
+@code {
+    [Parameter]
+    public int id { get; set; }
+
+    private CoursModel? cours;
+    private bool isEnrolled;
+    private string message = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        cours = await _context.Cours
+            .Include(c => c.Chapitres)
+            .Include(c => c.Apprenants)
+            .FirstOrDefaultAsync(c => c.Id == id);
+
+        await UpdateEnrollmentStateAsync();
+    }
+
+    private async Task UpdateEnrollmentStateAsync()
+    {
+        isEnrolled = false;
+        if (CurrentUserService.IsAuthenticated && CurrentUserService.Role == "Apprenant")
+        {
+            var userId = CurrentUserService.CurrentUser?.Id;
+            if (userId == null) return;
+
+            var apprenant = await _context.Utilisateurs.OfType<Apprenant>()
+                .Include(a => a.CoursSuivis)
+                .FirstOrDefaultAsync(a => a.Id == userId.Value);
+
+            if (apprenant != null && apprenant.CoursSuivis.Any(c => c.Id == id))
+                isEnrolled = true;
+        }
+    }
+
+    private async Task EnrollHere()
+    {
+        message = string.Empty;
+        if (!CurrentUserService.IsAuthenticated || CurrentUserService.Role != "Apprenant")
+        {
+            message = "Connecte-toi en tant qu'apprenant pour t'inscrire.";
+            return;
+        }
+
+        var userId = CurrentUserService.CurrentUser?.Id;
+        if (userId == null || cours == null)
+        {
+            message = "Impossible d'effectuer l'opération.";
+            return;
+        }
+
+        var apprenant = await _context.Utilisateurs.OfType<Apprenant>()
+            .Include(a => a.CoursSuivis)
+            .FirstOrDefaultAsync(a => a.Id == userId.Value);
+
+        if (apprenant == null)
+        {
+            message = "Impossible d'effectuer l'opération.";
+            return;
+        }
+
+        if (!apprenant.CoursSuivis.Any(c => c.Id == id))
+        {
+            apprenant.CoursSuivis.Add(cours);
+            await _context.SaveChangesAsync();
+            isEnrolled = true;
+            message = "Inscription réussie.";
+        }
+
+        // redirect to refresh and show chapters
+        Navigation.NavigateTo($"/cours/{id}");
+    }
+
+    private async Task UnenrollHere()
+    {
+        message = string.Empty;
+        if (!CurrentUserService.IsAuthenticated || CurrentUserService.Role != "Apprenant")
+        {
+            message = "Connecte-toi en tant qu'apprenant pour te désinscrire.";
+            return;
+        }
+
+        var userId = CurrentUserService.CurrentUser?.Id;
+        if (userId == null || cours == null)
+        {
+            message = "Impossible d'effectuer l'opération.";
+            return;
+        }
+
+        var apprenant = await _context.Utilisateurs.OfType<Apprenant>()
+            .Include(a => a.CoursSuivis)
+            .FirstOrDefaultAsync(a => a.Id == userId.Value);
+
+        if (apprenant == null)
+        {
+            message = "Impossible d'effectuer l'opération.";
+            return;
+        }
+
+        var found = apprenant.CoursSuivis.FirstOrDefault(c => c.Id == id);
+        if (found != null)
+        {
+            apprenant.CoursSuivis.Remove(found);
+            await _context.SaveChangesAsync();
+            isEnrolled = false;
+            message = "Désinscription réussie.";
+        }
+    }
+
+    private void StartCourse()
+    {
+        var first = cours?.Chapitres.OrderBy(c => c.Id).FirstOrDefault();
+        if (first != null)
+            Navigation.NavigateTo($"/cours/{id}/chapitre/{first.Id}");
+    }
+
+    private void OpenChapter(int chapitreId)
+    {
+        Navigation.NavigateTo($"/cours/{id}/chapitre/{chapitreId}");
+    }
+}
+
+<div class="container py-4">
+    @if (cours == null)
+    {
+        <div class="alert alert-warning">Cours introuvable.</div>
+    }
+    else
+    {
+        <div class="course-detail-header mb-4">
+            <img src="@cours.MiniatureUrl" alt="Miniature du cours @cours.Titre" class="img-fluid rounded-4 mb-4 course-detail-image" />
+            <div class="d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between gap-3">
+                <div>
+                    <h2>@cours.Titre</h2>
+                    <p class="text-muted mb-2">@cours.Description</p>
+                    <span class="badge bg-primary">@cours.Type</span>
+                </div>
+                <div class="d-flex align-items-center gap-3 instructor-card p-3 rounded-4 shadow-sm bg-white">
+                    <img src="@(cours.Enseignant?.PhotoUrl ?? "images/avatar-default.svg")" alt="Photo de @cours.Enseignant?.NomComplet" class="teacher-avatar" />
+                    <div>
+                        <div class="fw-semibold">@cours.Enseignant?.NomComplet ?? "Enseignant"</div>
+                        <div class="text-muted small">Professeur</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        @if (!string.IsNullOrEmpty(message))
+        {
+            <div class="alert alert-info">@message</div>
+        }
+
+        @if (isEnrolled)
+        {
+            <button class="btn btn-outline-danger" @onclick="UnenrollHere">Se désinscrire</button>
+            <button class="btn btn-success ms-2" @onclick="StartCourse">Commencer le cours</button>
+            <a class="btn btn-outline-primary ms-2" href="/certificat">Télécharger le certificat</a>
+        }
+        else
+        {
+            <button class="btn btn-primary me-2" @onclick="EnrollHere">S'inscrire</button>
+        }
+        <button class="btn btn-link" @onclick='() => Navigation.NavigateTo("/cours")'>Retour à la liste</button>
+
+        <div class="mt-4">
+            <h4>Chapitres</h4>
+            @if (cours.Chapitres != null && cours.Chapitres.Any())
+            {
+                <ol>
+                    @foreach (var ch in cours.Chapitres.OrderBy(ch => ch.Id))
+                    {
+                        <li>
+                            <strong>@ch.Titre</strong>
+                            <div class="text-muted">@((ch.Contenu ?? string.Empty).Length > 200 ? (ch.Contenu ?? string.Empty).Substring(0,200) + "..." : ch.Contenu)</div>
+                            <div class="mt-1">
+                                <a href="#" @onclick="() => OpenChapter(ch.Id)">Voir le chapitre</a>
+                            </div>
+                        </li>
+                    }
+                </ol>
+            }
+            else
+            {
+                <div class="text-muted">Aucun chapitre pour ce cours.</div>
+            }
+        </div>
+    }
+</div>
