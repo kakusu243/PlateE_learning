@@ -1,0 +1,16 @@
+# Dossiers de configuration de Visual Studio
+.vs/
+.vscode/
+
+# Dossiers de compilation et fichiers binaires (Très lourds et générés automatiquement)
+[Bb]in/
+[Oo]bj/
+
+# Fichiers de configuration utilisateur (Spécifiques à ton PC)
+*.user
+*.userosscache
+*.suo
+
+# Dossiers optionnels si tu utilises SQL Server en local
+*.mdf
+*.ldf

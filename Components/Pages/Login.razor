@@ -1,9 +1,12 @@
 @page "/login"
+@rendermode InteractiveServer
 @using System.ComponentModel.DataAnnotations
 @using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.EntityFrameworkCore
+@using PlateE_learning.Data
 @inject NavigationManager Navigation
-@inject PlateE_learning.Data.AppDbContext _context
-@inject PlateE_learning.Data.CurrentUserService CurrentUserService
+@inject IDbContextFactory<AppDbContext> DbFactory
+@inject CurrentUserService CurrentUserService
 
 <div class="container py-5">
     <div class="row justify-content-center">
@@ -14,36 +17,36 @@
                         <h4 class="card-title mb-3">Se connecter</h4>
 
                         <EditForm Model="Credentials" OnValidSubmit="HandleValidSubmit">
-                        <DataAnnotationsValidator />
-                        <ValidationSummary />
+                            <DataAnnotationsValidator />
+                            <ValidationSummary />
 
-                        <div class="mb-3">
-                            <label class="form-label">Adresse e-mail</label>
-                            <InputText @bind-Value="Credentials.Email" class="form-control" placeholder="adresse@exemple.com" />
-                        </div>
-
-                        <div class="mb-3">
-                            <label class="form-label">Mot de passe</label>
-                            <InputText @bind-Value="Credentials.Password" type="password" class="form-control" />
-                        </div>
-
-                        <div class="d-flex justify-content-between align-items-center mb-3">
-                            <div class="form-check">
-                                <InputCheckbox @bind-Value="Credentials.RememberMe" class="form-check-input" id="rememberMe" />
-                                <label class="form-check-label" for="rememberMe">Se souvenir</label>
+                            <div class="mb-3">
+                                <label class="form-label">Adresse e-mail</label>
+                                <InputText @bind-Value="Credentials.Email" class="form-control" placeholder="adresse@exemple.com" />
                             </div>
-                            <a href="#" class="small">Mot de passe oublié ?</a>
-                        </div>
 
-                        @if (!string.IsNullOrEmpty(ErrorMessage))
-                        {
-                            <div class="alert alert-danger">@ErrorMessage</div>
-                        }
+                            <div class="mb-3">
+                                <label class="form-label">Mot de passe</label>
+                                <InputText @bind-Value="Credentials.Password" type="password" class="form-control" />
+                            </div>
 
-                        <div class="d-grid">
-                            <button type="submit" class="btn btn-cta">Se connecter</button>
-                        </div>
-                    </EditForm>
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <div class="form-check">
+                                    <InputCheckbox @bind-Value="Credentials.RememberMe" class="form-check-input" id="rememberMe" />
+                                    <label class="form-check-label" for="rememberMe">Se souvenir</label>
+                                </div>
+                                <a href="#" class="small">Mot de passe oublié ?</a>
+                            </div>
+
+                            @if (!string.IsNullOrEmpty(ErrorMessage))
+                            {
+                                <div class="alert alert-danger mb-3">@ErrorMessage</div>
+                            }
+
+                            <div class="d-grid">
+                                <button type="submit" class="btn btn-cta">Se connecter</button>
+                            </div>
+                        </EditForm>
 
                         <div class="mt-3 text-center">
                             <small>Pas de compte ? <a href="/inscription">S'inscrire</a></small>
@@ -76,16 +79,28 @@
 
     async Task HandleValidSubmit()
     {
-        var user = _context.Utilisateurs
-            .FirstOrDefault(u => u.Email == Credentials.Email && u.MotDePasse == Credentials.Password);
+        ErrorMessage = string.Empty;
 
-        if (user != null)
+        try
         {
-            CurrentUserService.SetUser(user);
-            Navigation.NavigateTo("/");
-            return;
-        }
+            using var context = DbFactory.CreateDbContext();
 
-        ErrorMessage = "Identifiants incorrects.";
+            // Recherche asynchrone sécurisée
+            var user = await context.Utilisateurs
+                .FirstOrDefaultAsync(u => u.Email == Credentials.Email && u.MotDePasse == Credentials.Password);
+
+            if (user != null)
+            {
+                CurrentUserService.SetUser(user);
+                Navigation.NavigateTo("/");
+                return;
+            }
+
+            ErrorMessage = "Identifiants incorrects.";
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"Erreur lors de la connexion : {ex.Message}";
+        }
     }
 }

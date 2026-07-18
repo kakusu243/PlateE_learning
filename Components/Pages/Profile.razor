@@ -1,0 +1,375 @@
+﻿@page "/profile"
+@rendermode InteractiveServer
+@using PlateE_learning.Data
+@using PlateE_learning.Models
+@using Microsoft.EntityFrameworkCore
+@using System.IO
+@inject CurrentUserService CurrentUserService
+@inject IDbContextFactory<AppDbContext> DbFactory
+@inject NavigationManager NavigationManager
+@inject IWebHostEnvironment WebHostEnvironment
+
+<div class="container py-5">
+    @if (CurrentUserService.CurrentUser == null)
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Chargement...</span>
+            </div>
+            <p class="text-muted mt-3">Veuillez vous connecter pour accéder à votre profil.</p>
+        </div>
+    }
+    else
+    {
+        <div class="row g-4">
+            <!-- ================= COLONNE GAUCHE : PHOTO DE PROFIL ================= -->
+            <div class="col-lg-4">
+                <div class="card border-0 shadow-sm rounded-4 text-center p-4 bg-white h-100 d-flex flex-column align-items-center justify-content-center">
+                    <div class="position-relative d-inline-block mx-auto mb-3">
+                        <img src="@(string.IsNullOrEmpty(CurrentUserService.CurrentUser.PhotoUrl)
+                                                                  ? "https://images.unsplash.com/photo-1531123897727-8f129e1688ce?auto=format&fit=crop&q=80&w=120" 
+                                                                  : CurrentUserService.CurrentUser.PhotoUrl)"
+                             alt="Photo de profil"
+                             class="rounded-circle border border-primary border-3"
+                             style="width: 140px; height: 140px; object-fit: cover;" />
+                    </div>
+
+                    <h4 class="fw-bold text-dark mb-1">@CurrentUserService.CurrentUser.NomComplet</h4>
+                    <span class="badge bg-primary-subtle text-primary px-3 py-2 rounded-pill mb-4">
+                        @CurrentUserService.CurrentUser.Role
+                    </span>
+
+                    <hr class="text-muted opacity-25 w-100" />
+
+                    <!-- Formulaire d'importation d'image local -->
+                    <div class="text-center w-100">
+                        <label class="form-label fw-semibold small text-secondary d-block mb-2">Changer ma photo de profil</label>
+
+                        <div class="upload-btn-wrapper">
+                            <label for="fileUpload" class="btn btn-outline-primary btn-sm px-3 py-2 rounded-3 cursor-pointer w-100">
+                                <i class="bi bi-cloud-upload me-2"></i> @(isUploading ? "Importation..." : "Choisir une photo")
+                            </label>
+                            <InputFile id="fileUpload" OnChange="HandleFileSelected" accept=".jpg,.jpeg,.png" class="d-none" disabled="@isUploading" />
+                        </div>
+
+                        <span class="text-muted xsmall-text d-block mt-2">Formats acceptés : JPG, PNG. Max 2 Mo.</span>
+                    </div>
+
+                    @if (!string.IsNullOrEmpty(photoMessage))
+                    {
+                        <div class="alert @(photoMessage.Contains("succès") ? "alert-success" : "alert-danger") py-2 px-3 small mt-3 w-100" role="alert">
+                            @photoMessage
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <!-- ================= COLONNE DROITE : INFORMATIONS & PARAMÈTRES ================= -->
+            <div class="col-lg-8">
+                <div class="card border-0 shadow-sm rounded-4 p-4 bg-white h-100">
+                    <h3 class="fw-bold text-dark mb-4">Paramètres du Compte</h3>
+
+                    <!-- 1. Section Affichage des informations personnelles (Lecture seule) -->
+                    <div class="mb-4 p-3 bg-light rounded-4 border border-light-subtle">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h5 class="fw-bold text-dark mb-0">
+                                <i class="bi bi-person-badge text-primary me-2"></i>Mes Informations Personnelles
+                            </h5>
+                            @if (!isEditingInfo)
+                            {
+                                <button class="btn btn-primary btn-sm rounded-3" @onclick="ToggleEditInfo">
+                                    Modifier mes infos
+                                </button>
+                            }
+                        </div>
+
+                        @if (!isEditingInfo)
+                        {
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <span class="text-muted small d-block">Nom Complet</span>
+                                    <span class="fw-semibold text-dark fs-5">@CurrentUserService.CurrentUser.NomComplet</span>
+                                </div>
+                                <div class="col-md-6">
+                                    <span class="text-muted small d-block">Adresse Email</span>
+                                    <span class="fw-semibold text-dark fs-5">@CurrentUserService.CurrentUser.Email</span>
+                                </div>
+                            </div>
+                        }
+                        else
+                        {
+                            <!-- 2. Section Édition des informations -->
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label text-secondary small fw-medium">Nom Complet</label>
+                                    <input type="text" class="form-control" @bind="editedNomComplet" />
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label text-secondary small fw-medium">Adresse Email</label>
+                                    <input type="email" class="form-control" @bind="editedEmail" />
+                                </div>
+                                <div class="col-12 text-end mt-3">
+                                    <button class="btn btn-light me-2" @onclick="ToggleEditInfo">Annuler</button>
+                                    <button class="btn btn-success px-4" @onclick="UpdatePersonalSettings">Sauvegarder</button>
+                                </div>
+                            </div>
+                        }
+
+                        @if (!string.IsNullOrEmpty(emailMessage))
+                        {
+                            <div class="alert @(emailMessage.Contains("succès") ? "alert-success" : "alert-danger") py-2 px-3 small mt-3" role="alert">
+                                @emailMessage
+                            </div>
+                        }
+                    </div>
+
+                    <hr class="text-muted opacity-25 my-4" />
+
+                    <!-- 3. Section Modification du Mot de passe -->
+                    <div>
+                        <h5 class="fw-semibold text-danger mb-3">
+                            <i class="bi bi-shield-lock text-danger me-2"></i>Sécurité &amp; Mot de passe
+                        </h5>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label text-secondary small fw-medium">Nouveau mot de passe</label>
+                                <input type="password" class="form-control" @bind="newPassword" placeholder="Minimum 6 caractères" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label text-secondary small fw-medium">Confirmer le mot de passe</label>
+                                <input type="password" class="form-control" @bind="confirmPassword" placeholder="Confirmez" />
+                            </div>
+                            <div class="col-12 text-end">
+                                <button class="btn btn-danger px-4" @onclick="UpdatePassword">Modifier le mot de passe</button>
+                            </div>
+                        </div>
+                        @if (!string.IsNullOrEmpty(passwordMessage))
+                        {
+                            <div class="alert @(passwordMessage.Contains("succès") ? "alert-success" : "alert-danger") py-2 px-3 small mt-3" role="alert">
+                                @passwordMessage
+                            </div>
+                        }
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    // Mode édition
+    private bool isEditingInfo = false;
+    private bool isUploading = false;
+
+    // Propriétés de liaisons de formulaires
+    private string editedNomComplet = string.Empty;
+    private string editedEmail = string.Empty;
+    private string newPassword = string.Empty;
+    private string confirmPassword = string.Empty;
+
+    // Messages de retours utilisateur
+    private string photoMessage = string.Empty;
+    private string emailMessage = string.Empty;
+    private string passwordMessage = string.Empty;
+
+    protected override void OnInitialized()
+    {
+        if (CurrentUserService.CurrentUser == null)
+        {
+            NavigationManager.NavigateTo("/login");
+        }
+        else
+        {
+            // Initialiser les valeurs
+            ResetFormValues();
+        }
+    }
+
+    private void ResetFormValues()
+    {
+        if (CurrentUserService.CurrentUser != null)
+        {
+            editedNomComplet = CurrentUserService.CurrentUser.NomComplet ?? string.Empty;
+            editedEmail = CurrentUserService.CurrentUser.Email ?? string.Empty;
+        }
+    }
+
+    private void ToggleEditInfo()
+    {
+        isEditingInfo = !isEditingInfo;
+        if (!isEditingInfo)
+        {
+            ResetFormValues(); // Réinitialise si l'utilisateur annule la modification
+        }
+    }
+
+    // ================= LOGIQUE D'IMPORTATION DE PHOTO (LOCAL UPLOAD) =================
+    private async Task HandleFileSelected(InputFileChangeEventArgs e)
+    {
+        if (CurrentUserService.CurrentUser == null) return;
+
+        isUploading = true;
+        photoMessage = string.Empty;
+
+        try
+        {
+            var file = e.File;
+            if (file == null) return;
+
+            // Validation de la taille (2 Mo maximum)
+            long maxFileSize = 1024 * 1024 * 2; // 2 Mo
+            if (file.Size > maxFileSize)
+            {
+                photoMessage = "Le fichier est trop volumineux. La taille maximale autorisée est de 2 Mo.";
+                isUploading = false;
+                return;
+            }
+
+            // Générer un nom de fichier unique pour éviter les collisions (ex: user_5_photo.png)
+            var fileExtension = Path.GetExtension(file.Name);
+            var uniqueFileName = $"user_{CurrentUserService.CurrentUser.Id}_{Guid.NewGuid().ToString().Substring(0, 8)}{fileExtension}";
+
+            // Définir le chemin vers wwwroot/images/profiles/
+            var profilesFolder = Path.Combine(WebHostEnvironment.WebRootPath, "images", "profiles");
+
+            // Créer le dossier s'il n'existe pas encore
+            if (!Directory.Exists(profilesFolder))
+            {
+                Directory.CreateDirectory(profilesFolder);
+            }
+
+            var physicalPath = Path.Combine(profilesFolder, uniqueFileName);
+
+            // Sauvegarder localement le fichier
+            await using var fileStream = new FileStream(physicalPath, FileMode.Create);
+            await file.OpenReadStream(maxFileSize).CopyToAsync(fileStream);
+
+            // Créer le chemin relatif pour la Base de données (ex: "images/profiles/user_5_photo.png")
+            var relativePathForDb = $"images/profiles/{uniqueFileName}";
+
+            // Mettre à jour dans la Base de données MySQL
+            using var context = DbFactory.CreateDbContext();
+            var dbUser = await context.Utilisateurs.FindAsync(CurrentUserService.CurrentUser.Id);
+
+            if (dbUser != null)
+            {
+                dbUser.PhotoUrl = relativePathForDb;
+                await context.SaveChangesAsync();
+
+                // Mettre à jour l'état de l'utilisateur connecté en mémoire
+                CurrentUserService.CurrentUser.PhotoUrl = relativePathForDb;
+                CurrentUserService.SetUser(CurrentUserService.CurrentUser); // Met à jour la Navbar instantanément !
+
+                photoMessage = "Photo de profil mise à jour avec succès !";
+            }
+        }
+        catch (Exception ex)
+        {
+            photoMessage = $"Erreur lors de l'importation : {ex.Message}";
+        }
+        finally
+        {
+            isUploading = false;
+        }
+    }
+
+    // ================= MISE À JOUR DU NOM COMPLET ET DE L'EMAIL =================
+    private async Task UpdatePersonalSettings()
+    {
+        if (CurrentUserService.CurrentUser == null) return;
+
+        if (string.IsNullOrWhiteSpace(editedNomComplet))
+        {
+            emailMessage = "Le nom complet ne peut pas être vide.";
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(editedEmail) || !editedEmail.Contains("@"))
+        {
+            emailMessage = "Veuillez entrer une adresse email valide.";
+            return;
+        }
+
+        try
+        {
+            using var context = DbFactory.CreateDbContext();
+
+            // Vérifier si l'email saisi est déjà pris par quelqu'un d'autre
+            var emailExists = await context.Utilisateurs.AnyAsync(u => u.Email == editedEmail && u.Id != CurrentUserService.CurrentUser.Id);
+            if (emailExists)
+            {
+                emailMessage = "Cette adresse email est déjà utilisée par un autre compte.";
+                return;
+            }
+
+            var dbUser = await context.Utilisateurs.FindAsync(CurrentUserService.CurrentUser.Id);
+            if (dbUser != null)
+            {
+                dbUser.NomComplet = editedNomComplet;
+                dbUser.Email = editedEmail;
+                await context.SaveChangesAsync();
+
+                // Mettre à jour la session
+                CurrentUserService.CurrentUser.NomComplet = editedNomComplet;
+                CurrentUserService.CurrentUser.Email = editedEmail;
+                CurrentUserService.SetUser(CurrentUserService.CurrentUser);
+
+                isEditingInfo = false; // Fermer le mode d'édition
+                emailMessage = "Informations personnelles mises à jour avec succès !";
+            }
+        }
+        catch (Exception ex)
+        {
+            emailMessage = $"Erreur lors de la mise à jour : {ex.Message}";
+        }
+    }
+
+    // ================= MISE À JOUR DU MOT DE PASSE =================
+    private async Task UpdatePassword()
+    {
+        if (CurrentUserService.CurrentUser == null) return;
+
+        if (string.IsNullOrWhiteSpace(newPassword) || newPassword.Length < 6)
+        {
+            passwordMessage = "Le mot de passe doit contenir au moins 6 caractères.";
+            return;
+        }
+
+        if (newPassword != confirmPassword)
+        {
+            passwordMessage = "Les deux mots de passe ne correspondent pas.";
+            return;
+        }
+
+        try
+        {
+            using var context = DbFactory.CreateDbContext();
+            var dbUser = await context.Utilisateurs.FindAsync(CurrentUserService.CurrentUser.Id);
+
+            if (dbUser != null)
+            {
+                dbUser.MotDePasse = newPassword; // Hacher ici si nécessaire
+                await context.SaveChangesAsync();
+
+                newPassword = string.Empty;
+                confirmPassword = string.Empty;
+                passwordMessage = "Mot de passe modifié avec succès !";
+            }
+        }
+        catch (Exception ex)
+        {
+            passwordMessage = $"Erreur lors de la modification : {ex.Message}";
+        }
+    }
+}
+
+<style>
+    .xsmall-text {
+        font-size: 0.75rem;
+    }
+
+    .cursor-pointer {
+        cursor: pointer;
+    }
+</style>

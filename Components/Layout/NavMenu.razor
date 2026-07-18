@@ -2,57 +2,97 @@
 @inject CurrentUserService CurrentUserService
 @implements IDisposable
 
-<nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm top-navbar">
+<nav class="navbar navbar-expand-lg navbar-light bg-white border-bottom py-3 main-navbar">
     <div class="container">
-        <a class="navbar-brand fw-bold" href="/">PlateE-Learning</a>
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav" aria-controls="mainNav" aria-expanded="false" aria-label="Toggle navigation">
+        <!-- Logo de la plateforme -->
+        <a class="navbar-brand fw-bold text-primary fs-4" href="/">
+            <span class="brand-accent">PlateE</span>-Learning
+        </a>
+
+        <!-- Bouton mobile (hamburger) -->
+        <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav" aria-controls="mainNav" aria-expanded="false" aria-label="Toggle navigation">
             <span class="navbar-toggler-icon"></span>
         </button>
 
+        <!-- Contenu du menu -->
         <div class="collapse navbar-collapse" id="mainNav">
-            <ul class="navbar-nav mx-auto mb-2 mb-lg-0">
+            <ul class="navbar-nav mx-auto gap-1 gap-lg-3 my-3 my-lg-0">
                 <li class="nav-item">
-                    <NavLink class="nav-link" href="/" Match="NavLinkMatch.All">Accueil</NavLink>
+                    <NavLink class="nav-link px-3 py-2 rounded-3" href="/" Match="NavLinkMatch.All">
+                        Accueil
+                    </NavLink>
                 </li>
                 <li class="nav-item">
-                    <NavLink class="nav-link" href="/cours">Cours</NavLink>
+                    <NavLink class="nav-link px-3 py-2 rounded-3" href="/cours">
+                        Cours
+                    </NavLink>
                 </li>
                 <li class="nav-item">
-                    <NavLink class="nav-link" href="/#apropos">À propos</NavLink>
+                    <NavLink class="nav-link px-3 py-2 rounded-3" href="/#apropos">
+                        À propos
+                    </NavLink>
                 </li>
+
                 @if (CurrentUserService.IsAuthenticated)
                 {
                     @if (CurrentUserService.Role == "Admin")
                     {
                         <li class="nav-item">
-                            <NavLink class="nav-link" href="/dashboard">Tableau de bord</NavLink>
+                            <NavLink class="nav-link px-3 py-2 rounded-3" href="/dashboard">
+                                Admin Dashboard
+                            </NavLink>
                         </li>
                     }
                     else if (CurrentUserService.Role == "Enseignant")
                     {
                         <li class="nav-item">
-                            <NavLink class="nav-link" href="/espace-enseignant">Mon espace</NavLink>
+                            <NavLink class="nav-link px-3 py-2 rounded-3" href="/espace-enseignant">
+                                Espace Formateur
+                            </NavLink>
                         </li>
                     }
                     else if (CurrentUserService.Role == "Apprenant")
                     {
                         <li class="nav-item">
-                            <NavLink class="nav-link" href="/mes-cours">Mes cours</NavLink>
+                            <NavLink class="nav-link px-3 py-2 rounded-3" href="/mes-cours">
+                                Mes Cours
+                            </NavLink>
                         </li>
                     }
                 }
             </ul>
 
-            <div class="d-flex align-items-center">
+            <!-- Zone d'actions utilisateur (Authentification propre) -->
+            <div class="d-flex align-items-center gap-2 flex-wrap">
                 @if (!CurrentUserService.IsAuthenticated)
                 {
-                    <NavLink class="btn btn-outline-primary me-2" href="/login">Se Connecter</NavLink>
-                    <NavLink class="btn btn-primary" href="/inscription">S'inscrire</NavLink>
+                    <NavLink class="btn btn-light text-primary fw-medium px-4 py-2 rounded-3" href="/login">
+                        Se connecter
+                    </NavLink>
+                    <NavLink class="btn btn-primary fw-medium px-4 py-2 rounded-3 shadow-sm" href="/inscription">
+                        S'inscrire
+                    </NavLink>
                 }
                 else
                 {
-                    <span class="me-3 text-muted">@CurrentUserService.Role</span>
-                    <button class="btn btn-outline-danger" @onclick="Logout">Se déconnecter</button>
+                    <NavLink href="/profile" class="user-profile-badge d-flex align-items-center gap-2 bg-light px-2 py-1 rounded-pill me-2 text-decoration-none transition-hover">
+                        <!-- Photo de profil de l'utilisateur avec fallback -->
+                        <img src="@(string.IsNullOrEmpty(CurrentUserService.CurrentUser?.PhotoUrl)
+                                                  ? "https://images.unsplash.com/photo-1531123897727-8f129e1688ce?auto=format&fit=crop&q=80&w=120" 
+                                                  : CurrentUserService.CurrentUser.PhotoUrl)"
+                             alt="Profil"
+                             class="rounded-circle"
+                             style="width: 32px; height: 32px; object-fit: cover; border: 2px solid #fff;" />
+
+                        <!-- Nom de l'utilisateur connecté -->
+                        <span class="text-secondary small fw-bold pe-2">
+                            @CurrentUserService.CurrentUser?.NomComplet
+                        </span>
+                    </NavLink>
+
+                    <button class="btn btn-outline-danger btn-sm px-3 rounded-3" @onclick="Logout">
+                        Déconnexion
+                    </button>
                 }
             </div>
         </div>
@@ -76,4 +116,3 @@
         StateHasChanged();
     }
 }
-
