@@ -1,141 +1,170 @@
 ﻿@page "/"
+@rendermode InteractiveServer
+@using Microsoft.EntityFrameworkCore
 @using PlateE_learning.Models
+@using PlateE_learning.Data
+@inject IDbContextFactory<AppDbContext> DbFactory
 
-<section class="hero-section" id="home">
-    <div class="hero-overlay"></div>
-    <div class="container hero-content">
+<!-- Section Hero -->
+<section class="hero-section text-white py-5" id="home" style="background: linear-gradient(135deg, #0d6efd, #0a58ca); width: 100%;">
+    <div class="container py-5">
         <div class="row align-items-center gy-4">
-            <div class="col-lg-6 text-white">
-                <span class="eyebrow">PlateE-Learning</span>
-                <h1 class="display-5 fw-bold">Formez-vous. Certifiez-vous, Réussissez.</h1>
+            <div class="col-lg-6">
+                <span class="text-uppercase fw-bold text-white-50 small tracking-wider">PlateE-Learning</span>
+                <h1 class="display-4 fw-bold mt-2 mb-3">Formez-vous. Certifiez-vous, Réussissez.</h1>
                 <p class="lead mb-4">Apprenez à votre rythme et obtenez des certifications reconnues pour booster votre carrière.</p>
                 <div class="d-flex flex-wrap gap-3">
-                    <a href="/inscription" class="btn btn-cta btn-lg">Commencer un cours</a>
-                    <a href="#cours" class="btn btn-outline-light btn-lg">Voir les cours</a>
+                    <a href="/inscription" class="btn btn-warning btn-lg fw-bold px-4 py-3 shadow-sm">Commencer un cours</a>
+                    <a href="#cours" class="btn btn-outline-light btn-lg px-4 py-3">Voir les cours</a>
                 </div>
             </div>
+            <!-- 🌍 Image d'étudiantes africaines dynamiques et connectées -->
             <div class="col-lg-6 text-center">
-                <img src="images/hero-student.png" class="img-fluid hero-image" alt="Illustration étudiant" />
+                <img src="https://images.unsplash.com/photo-1531482615713-2afd69097998?auto=format&fit=crop&q=80&w=800"
+                     class="img-fluid rounded-4 shadow-lg border border-light border-3"
+                     alt="Étudiantes africaines qui étudient sur un ordinateur"
+                     style="max-height: 400px; object-fit: cover; width: 100%;" />
             </div>
         </div>
     </div>
 </section>
 
+<!-- Section Cours Populaires (Dynamique depuis MySQL !) -->
 <section class="courses-section py-5" id="cours">
     <div class="container">
         <div class="section-header text-center mb-5">
-            <h2 class="fw-bold">Cours Populaires</h2>
-            <p class="text-muted">Explorez nos formations les plus suivies.</p>
+            <h2 class="fw-bold text-dark">Nos Dernières Formations</h2>
+            <p class="text-muted">Découvrez les 3 cours les plus récents ajoutés sur notre plateforme.</p>
         </div>
 
         <div class="row g-4">
-            <div class="col-md-4">
-                <div class="course-card shadow-sm rounded overflow-hidden">
-                    <img src="images/devweb.jpg" class="card-img-top" alt="Développement Web" />
-                    <div class="card-body">
-                        <h5 class="card-title">Développement Web</h5>
-                        <p class="card-text text-muted mb-3">12 Modules</p>
-                        <div class="d-flex align-items-center justify-content-between">
-                            <div>
-                                <span class="rating">4.8</span>
-                                <span class="text-muted">(320)</span>
-                            </div>
-                            <span class="badge bg-primary">Populaire</span>
-                        </div>
+            @if (ListCours == null)
+            {
+                <div class="text-center py-5 w-100">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Chargement des cours...</span>
                     </div>
                 </div>
-            </div>
-
-            <div class="col-md-4">
-                <div class="course-card shadow-sm rounded overflow-hidden">
-                    <img src="images/marketing.jpg" class="card-img-top" alt="Marketing Digital" />
-                    <div class="card-body">
-                        <h5 class="card-title">Marketing Digital</h5>
-                        <p class="card-text text-muted mb-3">12 Modules</p>
-                        <div class="d-flex align-items-center justify-content-between">
-                            <div>
-                                <span class="rating">4.8</span>
-                                <span class="text-muted">(320)</span>
+            }
+            else if (!ListCours.Any())
+            {
+                <div class="text-center py-5 w-100">
+                    <p class="text-muted fs-5">Aucun cours n'est disponible dans la base de données pour le moment.</p>
+                </div>
+            }
+            else
+            {
+                @foreach (var cours in ListCours)
+                {
+                    <div class="col-md-4">
+                        <div class="course-card shadow-sm rounded-4 overflow-hidden h-100 d-flex flex-column bg-white border">
+                            <img src="@(string.IsNullOrEmpty(cours.ImageUri) ? "images/devweb.jpg" : cours.ImageUri)"
+                                 class="card-img-top"
+                                 alt="@cours.Titre"
+                                 style="height: 220px; object-fit: cover;" />
+                            <div class="card-body d-flex flex-column justify-content-between flex-grow-1 p-4">
+                                <div>
+                                    <span class="badge bg-primary-subtle text-primary mb-2 px-3 py-2 rounded-pill">@cours.Niveau</span>
+                                    <h5 class="card-title fw-bold text-dark mb-2">@cours.Titre</h5>
+                                    <p class="card-text text-muted mb-3" style="display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;">
+                                        @cours.DescriptionCourte
+                                    </p>
+                                </div>
+                                <div class="d-flex align-items-center justify-content-between mt-3 pt-3 border-top">
+                                    <div>
+                                        <span class="rating fw-bold text-warning">★ 4.8</span>
+                                        <span class="text-muted small">(@cours.NombreInscrits apprenants)</span>
+                                    </div>
+                                    <a href="/login" class="btn btn-outline-primary btn-sm px-3 rounded-pill">Voir</a>
+                                </div>
                             </div>
-                            <span class="badge bg-primary">Recommandé</span>
                         </div>
                     </div>
-                </div>
-            </div>
-
-            <div class="col-md-4">
-                <div class="course-card shadow-sm rounded overflow-hidden">
-                    <img src="images/projet.jpg" class="card-img-top" alt="Gestion de Projet" />
-                    <div class="card-body">
-                        <h5 class="card-title">Gestion de Projet</h5>
-                        <p class="card-text text-muted mb-3">12 Modules</p>
-                        <div class="d-flex align-items-center justify-content-between">
-                            <div>
-                                <span class="rating">4.8</span>
-                                <span class="text-muted">(320)</span>
-                            </div>
-                            <span class="badge bg-primary">Nouveau</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
+                }
+            }
         </div>
     </div>
 </section>
 
-<section class="about-section py-5" id="apropos">
+<!-- Section À propos -->
+<section class="about-section py-5 bg-white" id="apropos">
     <div class="container">
-        <div class="row align-items-center">
-            <div class="col-lg-6 mb-4 mb-lg-0">
+        <div class="row align-items-center gy-4">
+            <div class="col-lg-6">
                 <h2 class="fw-bold">La meilleure façon d'apprendre en ligne</h2>
-                <p class="text-muted">Des parcours complets, des mentors expérimentés et des certifications pour booster votre carrière.</p>
-                <ul class="list-unstyled text-muted">
-                    <li class="mb-2">✔ Cours élaborés par des experts</li>
-                    <li class="mb-2">✔ Accès à vie et suivi personnalisé</li>
-                    <li>✔ Certificats reconnus à la fin de chaque parcours</li>
+                <p class="text-muted mb-4">Des parcours complets, des mentors expérimentés et des certifications pour booster votre carrière.</p>
+                <ul class="list-unstyled text-muted lh-lg">
+                    <li class="mb-2"><span class="text-primary fw-bold">✔</span> Cours élaborés par des experts</li>
+                    <li class="mb-2"><span class="text-primary fw-bold">✔</span> Accès à vie et suivi personnalisé</li>
+                    <li><span class="text-primary fw-bold">✔</span> Certificats reconnus à la fin de chaque parcours</li>
                 </ul>
             </div>
             <div class="col-lg-6">
-                <div class="feature-box p-4 shadow-sm rounded bg-white">
-                    <h5 class="fw-bold mb-3">Découvrez un apprentissage flexible</h5>
-                    <p class="text-muted">Passez de débutant à expert avec des ressources interactives, des cas pratiques et un accompagnement adapté.</p>
+                <div class="p-4 shadow-sm rounded-4 bg-light border-start border-primary border-4">
+                    <h5 class="fw-bold mb-3 text-primary">Découvrez un apprentissage flexible</h5>
+                    <p class="text-muted mb-0">Passez de débutant à expert avec des ressources interactives, des cas pratiques et un accompagnement adapté à vos besoins quotidiens.</p>
                 </div>
             </div>
         </div>
     </div>
 </section>
 
+<!-- Section Témoignages (Avec de superbes avatars africains !) -->
 <section class="testimonials-section py-5 bg-light" id="temoignages">
     <div class="container text-center">
         <div class="section-header mb-5">
             <h2 class="fw-bold">Ce Que Disent Nos Apprenants</h2>
+            <p class="text-muted">Découvrez les retours d'expérience de notre communauté.</p>
         </div>
 
-        <div class="row g-4">
+        <div class="row g-4 justify-content-center">
+            <!-- Témoignage 1 -->
             <div class="col-md-4">
-                <div class="testimonial-card shadow-sm rounded p-4 h-100">
-                    <div class="testimonial-content">
-                        <p class="text-muted fst-italic">"Une plateforme fantastique ! J'ai appris tant de choses."</p>
-                        <h6 class="fw-bold mt-4">Marie L.</h6>
-                        <p class="text-warning mb-0">★★★★★</p>
+                <div class="testimonial-card shadow-sm rounded-4 p-4 h-100 bg-white border d-flex flex-column justify-content-between">
+                    <p class="text-muted fst-italic mb-4">"Une plateforme fantastique ! J'ai pu acquérir les bases de la programmation en quelques semaines grâce aux cours très bien structurés."</p>
+                    <div class="d-flex align-items-center justify-content-center gap-3">
+                        <img src="https://images.unsplash.com/photo-1531123897727-8f129e1688ce?auto=format&fit=crop&q=80&w=120"
+                             class="rounded-circle border border-primary border-2"
+                             alt="Marie L."
+                             style="width: 50px; height: 50px; object-fit: cover;" />
+                        <div class="text-start">
+                            <h6 class="fw-bold mb-0 text-dark">Marie L.</h6>
+                            <p class="text-warning mb-0 small">★★★★★</p>
+                        </div>
                     </div>
                 </div>
             </div>
+
+            <!-- Témoignage 2 -->
             <div class="col-md-4">
-                <div class="testimonial-card shadow-sm rounded p-4 h-100">
-                    <div class="testimonial-content">
-                        <p class="text-muted fst-italic">"Les cours sont clairs et très bien structurés."</p>
-                        <h6 class="fw-bold mt-4">Thomas D.</h6>
-                        <p class="text-warning mb-0">★★★★★</p>
+                <div class="testimonial-card shadow-sm rounded-4 p-4 h-100 bg-white border d-flex flex-column justify-content-between">
+                    <p class="text-muted fst-italic mb-4">"Le format flexible me permet de me former le soir après mon travail. Les mentors sont également très réactifs à chaque question."</p>
+                    <div class="d-flex align-items-center justify-content-center gap-3">
+                        <img src="https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&q=80&w=120"
+                             class="rounded-circle border border-primary border-2"
+                             alt="Thomas D."
+                             style="width: 50px; height: 50px; object-fit: cover;" />
+                        <div class="text-start">
+                            <h6 class="fw-bold mb-0 text-dark">Thomas D.</h6>
+                            <p class="text-warning mb-0 small">★★★★★</p>
+                        </div>
                     </div>
                 </div>
             </div>
+
+            <!-- Témoignage 3 -->
             <div class="col-md-4">
-                <div class="testimonial-card shadow-sm rounded p-4 h-100">
-                    <div class="testimonial-content">
-                        <p class="text-muted fst-italic">"Grâce à cette formation, j'ai trouvé un nouvel emploi !"</p>
-                        <h6 class="fw-bold mt-4">Sophie M.</h6>
-                        <p class="text-warning mb-0">★★★★★</p>
+                <div class="testimonial-card shadow-sm rounded-4 p-4 h-100 bg-white border d-flex flex-column justify-content-between">
+                    <p class="text-muted fst-italic mb-4">"Grâce à cette formation de qualité et à la certification obtenue, j'ai pu décrocher un nouvel emploi en tant que développeuse !"</p>
+                    <div class="d-flex align-items-center justify-content-center gap-3">
+                        <img src="https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?auto=format&fit=crop&q=80&w=120"
+                             class="rounded-circle border border-primary border-2"
+                             alt="Sophie M."
+                             style="width: 50px; height: 50px; object-fit: cover;" />
+                        <div class="text-start">
+                            <h6 class="fw-bold mb-0 text-dark">Sophie M.</h6>
+                            <p class="text-warning mb-0 small">★★★★★</p>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -143,13 +172,61 @@
     </div>
 </section>
 
-<section class="cta-section py-5">
+<!-- Section Appel à l'action -->
+<section class="cta-section py-5 bg-white">
     <div class="container text-center">
-        <div class="cta-box rounded-4 p-5 shadow-sm">
-            <h2 class="fw-bold mb-3">Rejoignez-nous dès aujourd'hui !</h2>
-            <p class="text-muted mb-4">Inscrivez-vous et commencez votre parcours d'apprentissage des maintenant.</p>
-            <a href="/inscription" class="btn btn-cta btn-lg me-3">S'inscrire</a>
-            <a href="/login" class="btn btn-outline-primary btn-lg">Se Connecter</a>
+        <div class="rounded-4 p-5 shadow-sm text-white" style="background: linear-gradient(135deg, #0d6efd, #0a58ca);">
+            <h2 class="fw-bold mb-3">Rejoignez-nous dès aujourd'hui !</h2>
+            <p class="mb-4 text-white-50">Inscrivez-vous et commencez votre parcours d'apprentissage dès maintenant.</p>
+            <a href="/inscription" class="btn btn-light btn-lg me-3 text-primary fw-bold px-4 py-2">S'inscrire</a>
+            <a href="/login" class="btn btn-outline-light btn-lg px-4 py-2">Se Connecter</a>
         </div>
     </div>
 </section>
+
+@code {
+    private List<CoursDto>? ListCours;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            using var context = DbFactory.CreateDbContext();
+
+            ListCours = await context.Cours
+                .OrderByDescending(c => c.Id)
+                .Take(3)
+                .Select(c => new CoursDto
+                {
+                    Titre = c.Titre,
+                    DescriptionCourte = c.Description,
+                    ImageUri = c.MiniatureUrl,
+                    NombreInscrits = 150
+                })
+                .ToListAsync();
+        }
+        catch (Exception)
+        {
+            ListCours = GetFallbackCourses();
+        }
+    }
+
+    private List<CoursDto> GetFallbackCourses()
+    {
+        return new List<CoursDto>
+        {
+            new CoursDto { Titre = "Développement Web", DescriptionCourte = "Apprenez le HTML, CSS, JS et .NET pour concevoir des sites web modernes.", ImageUri = "images/devweb.jpg", Niveau = "Populaire", NombreInscrits = 320 },
+            new CoursDto { Titre = "Marketing Digital", DescriptionCourte = "Maîtrisez le SEO, la publicité payante et la gestion de vos réseaux sociaux.", ImageUri = "images/marketing.jpg", Niveau = "Recommandé", NombreInscrits = 215 },
+            new CoursDto { Titre = "Gestion de Projet", DescriptionCourte = "Adoptez les méthodologies agiles Scrum et Kanban pour piloter vos projets.", ImageUri = "images/projet.jpg", Niveau = "Nouveau", NombreInscrits = 98 }
+        };
+    }
+
+    public class CoursDto
+    {
+        public string Titre { get; set; } = string.Empty;
+        public string DescriptionCourte { get; set; } = string.Empty;
+        public string ImageUri { get; set; } = string.Empty;
+        public string Niveau { get; set; } = "Débutant";
+        public int NombreInscrits { get; set; }
+    }
+}

@@ -1,8 +1,11 @@
 @page "/inscription"
+@rendermode InteractiveServer
 @using System.ComponentModel.DataAnnotations
 @using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.EntityFrameworkCore
 @using PlateE_learning.Models
-@inject PlateE_learning.Data.AppDbContext _context
+@using PlateE_learning.Data
+@inject IDbContextFactory<AppDbContext> DbFactory
 
 <div class="container py-5">
     <div class="row justify-content-center">
@@ -12,9 +15,19 @@
                     <div class="login-form flex-fill">
                         <h4 class="card-title mb-3">S'inscrire</h4>
 
-                        <EditForm Model="@registerModel" OnValidSubmit="HandleInscription">
+                        @if (!string.IsNullOrEmpty(ErrorMessage))
+                        {
+                            <div class="alert alert-danger mb-3">@ErrorMessage</div>
+                        }
+
+                        @if (!string.IsNullOrEmpty(SuccessMessage))
+                        {
+                            <div class="alert alert-success mb-3">@SuccessMessage</div>
+                        }
+
+                        <EditForm Model="@registerModel" OnValidSubmit="HandleInscription" OnInvalidSubmit="HandleInvalidSubmit">
                             <DataAnnotationsValidator />
-                            <ValidationSummary />
+                            <ValidationSummary class="text-danger mb-3" />
 
                             <div class="mb-3">
                                 <label class="form-label">Nom :</label>
@@ -72,14 +85,10 @@
     </div>
 </div>
 
-@if (!string.IsNullOrEmpty(SuccessMessage))
-{
-    <div class="alert alert-success mt-3">@SuccessMessage</div>
-}
-
 @code {
     private RegisterModel registerModel = new RegisterModel();
     private string SuccessMessage = string.Empty;
+    private string ErrorMessage = string.Empty;
 
     protected override void OnInitialized()
     {
@@ -88,19 +97,56 @@
 
     private async Task HandleInscription()
     {
-        var apprenant = new Apprenant
+        ErrorMessage = string.Empty;
+        SuccessMessage = string.Empty;
+
+        try
         {
-            NomComplet = $"{registerModel.Nom} {registerModel.Prenom}".Trim(),
-            Email = registerModel.Email,
-            Role = registerModel.Role,
-            DateInscription = DateTime.Now,
-            MotDePasse = registerModel.Password
-        };
+            using var context = DbFactory.CreateDbContext();
 
-        _context.Utilisateurs.Add(apprenant);
-        await _context.SaveChangesAsync();
+            // 1. Vérification e-mail unique
+            var emailExiste = await context.Utilisateurs.AnyAsync(u => u.Email == registerModel.Email);
+            if (emailExiste)
+            {
+                ErrorMessage = "Cette adresse e-mail est déjà utilisée.";
+                return;
+            }
 
-        SuccessMessage = "Inscription réussie ! Vous allez bientôt recevoir un email si vous avez demandé les informations.";
+            // 2. Instanciation dynamique selon le rôle
+            Utilisateur nouvelUtilisateur;
+            if (registerModel.Role == "Enseignant")
+            {
+                nouvelUtilisateur = new Enseignant();
+            }
+            else
+            {
+                nouvelUtilisateur = new Apprenant();
+            }
+
+            // 3. Attribution des valeurs
+            nouvelUtilisateur.NomComplet = $"{registerModel.Nom} {registerModel.Prenom}".Trim();
+            nouvelUtilisateur.Email = registerModel.Email;
+            nouvelUtilisateur.Role = registerModel.Role;
+            nouvelUtilisateur.MotDePasse = registerModel.Password;
+            nouvelUtilisateur.DateInscription = DateTime.Now;
+
+            // 4. Enregistrement
+            context.Utilisateurs.Add(nouvelUtilisateur);
+            await context.SaveChangesAsync();
+
+            SuccessMessage = "Inscription réussie ! Vous pouvez maintenant vous connecter.";
+            registerModel = new RegisterModel(); // Réinitialisation du formulaire
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"Erreur technique lors de l'enregistrement : {ex.Message}";
+        }
+    }
+
+    private void HandleInvalidSubmit()
+    {
+        SuccessMessage = string.Empty;
+        ErrorMessage = "Veuillez remplir correctement tous les champs requis et accepter les conditions d'utilisation.";
     }
 
     private class RegisterModel

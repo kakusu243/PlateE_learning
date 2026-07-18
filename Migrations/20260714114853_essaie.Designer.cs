@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using PlateE_learning.Data;
 
@@ -11,9 +12,11 @@ using PlateE_learning.Data;
 namespace PlateE_learning.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260714114853_essaie")]
+    partial class essaie
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -90,7 +93,7 @@ namespace PlateE_learning.Migrations
                         .IsRequired()
                         .HasColumnType("longtext");
 
-                    b.Property<int>("CoursId")
+                    b.Property<int?>("CoursId")
                         .HasColumnType("int");
 
                     b.Property<int>("Ordre")
@@ -149,7 +152,7 @@ namespace PlateE_learning.Migrations
 
                     MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<int>("CoursId")
+                    b.Property<int?>("CoursId")
                         .HasColumnType("int");
 
                     b.Property<int>("NoteMax")
@@ -181,6 +184,11 @@ namespace PlateE_learning.Migrations
                     b.Property<DateTime>("DateInscription")
                         .HasColumnType("datetime(6)");
 
+                    b.Property<string>("Discriminator")
+                        .IsRequired()
+                        .HasMaxLength(13)
+                        .HasColumnType("varchar(13)");
+
                     b.Property<string>("Email")
                         .IsRequired()
                         .HasColumnType("longtext");
@@ -201,25 +209,13 @@ namespace PlateE_learning.Migrations
                         .IsRequired()
                         .HasColumnType("longtext");
 
-                    b.Property<string>("UserType")
-                        .IsRequired()
-                        .HasMaxLength(21)
-                        .HasColumnType("varchar(21)");
-
                     b.HasKey("Id");
 
                     b.ToTable("Utilisateurs");
 
-                    b.HasDiscriminator<string>("UserType").HasValue("Utilisateur");
+                    b.HasDiscriminator().HasValue("Utilisateur");
 
                     b.UseTphMappingStrategy();
-                });
-
-            modelBuilder.Entity("PlateE_learning.Models.Administrateur", b =>
-                {
-                    b.HasBaseType("PlateE_learning.Models.Utilisateur");
-
-                    b.HasDiscriminator().HasValue("Administrateur");
                 });
 
             modelBuilder.Entity("PlateE_learning.Models.Apprenant", b =>
@@ -261,13 +257,10 @@ namespace PlateE_learning.Migrations
 
             modelBuilder.Entity("PlateE_learning.Models.Chapitre", b =>
                 {
-                    b.HasOne("PlateE_learning.Models.Cours", "Cours")
+                    b.HasOne("PlateE_learning.Models.Cours", null)
                         .WithMany("Chapitres")
                         .HasForeignKey("CoursId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Cours");
+                        .OnDelete(DeleteBehavior.Cascade);
                 });
 
             modelBuilder.Entity("PlateE_learning.Models.Cours", b =>
@@ -282,13 +275,10 @@ namespace PlateE_learning.Migrations
 
             modelBuilder.Entity("PlateE_learning.Models.Evaluation", b =>
                 {
-                    b.HasOne("PlateE_learning.Models.Cours", "Cours")
+                    b.HasOne("PlateE_learning.Models.Cours", null)
                         .WithMany("Evaluations")
                         .HasForeignKey("CoursId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Cours");
+                        .OnDelete(DeleteBehavior.Cascade);
                 });
 
             modelBuilder.Entity("PlateE_learning.Models.Cours", b =>

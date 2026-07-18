@@ -1,12 +1,14 @@
 ﻿@inherits LayoutComponentBase
 
-<div class="app-shell">
-    <NavMenu />
+<div class="app-container">
+    <!-- Le menu se place tout en haut -->
+    <header>
+        <NavMenu />
+    </header>
 
+    <!-- Le contenu de tes pages se met en dessous, libéré de toute marge -->
     <main>
-        <article class="content px-4">
-            @Body
-        </article>
+        @Body
     </main>
 </div>
 
