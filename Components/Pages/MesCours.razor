@@ -57,9 +57,17 @@
     {
         if (CurrentUserService.IsAuthenticated && CurrentUserService.Role == "Apprenant")
         {
-            var apprenant = _context.Utilisateurs.OfType<Apprenant>()
-                .Include(a => a.CoursSuivis)
-                .FirstOrDefault(a => a.Id == CurrentUserService.CurrentUser!.Id);
+            var query = _context.Utilisateurs.OfType<Apprenant>().Include(a => a.CoursSuivis);
+
+            Apprenant? apprenant = null;
+            if (CurrentUserService.LegacyUser != null && CurrentUserService.LegacyUser.Id != 0)
+            {
+                apprenant = query.FirstOrDefault(a => a.Id == CurrentUserService.LegacyUser.Id);
+            }
+            else if (CurrentUserService.CurrentUser != null && !string.IsNullOrEmpty(CurrentUserService.CurrentUser.Email))
+            {
+                apprenant = query.FirstOrDefault(a => a.Email == CurrentUserService.CurrentUser.Email);
+            }
 
             if (apprenant != null)
             {

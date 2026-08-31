@@ -29,12 +29,19 @@
         isEnrolled = false;
         if (CurrentUserService.IsAuthenticated && CurrentUserService.Role == "Apprenant")
         {
-            var userId = CurrentUserService.CurrentUser?.Id;
-            if (userId == null) return;
-
-            var apprenant = await _context.Utilisateurs.OfType<Apprenant>()
-                .Include(a => a.CoursSuivis)
-                .FirstOrDefaultAsync(a => a.Id == userId.Value);
+            Apprenant? apprenant = null;
+            if (CurrentUserService.LegacyUser != null && CurrentUserService.LegacyUser.Id != 0)
+            {
+                apprenant = await _context.Utilisateurs.OfType<Apprenant>()
+                    .Include(a => a.CoursSuivis)
+                    .FirstOrDefaultAsync(a => a.Id == CurrentUserService.LegacyUser.Id);
+            }
+            else if (CurrentUserService.CurrentUser != null && !string.IsNullOrEmpty(CurrentUserService.CurrentUser.Email))
+            {
+                apprenant = await _context.Utilisateurs.OfType<Apprenant>()
+                    .Include(a => a.CoursSuivis)
+                    .FirstOrDefaultAsync(a => a.Email == CurrentUserService.CurrentUser.Email);
+            }
 
             if (apprenant != null && apprenant.CoursSuivis.Any(c => c.Id == id))
                 isEnrolled = true;
@@ -50,16 +57,25 @@
             return;
         }
 
-        var userId = CurrentUserService.CurrentUser?.Id;
-        if (userId == null || cours == null)
+        Apprenant? apprenant = null;
+        if (CurrentUserService.LegacyUser != null && CurrentUserService.LegacyUser.Id != 0)
+        {
+            apprenant = await _context.Utilisateurs.OfType<Apprenant>()
+                .Include(a => a.CoursSuivis)
+                .FirstOrDefaultAsync(a => a.Id == CurrentUserService.LegacyUser.Id);
+        }
+        else if (CurrentUserService.CurrentUser != null && !string.IsNullOrEmpty(CurrentUserService.CurrentUser.Email))
+        {
+            apprenant = await _context.Utilisateurs.OfType<Apprenant>()
+                .Include(a => a.CoursSuivis)
+                .FirstOrDefaultAsync(a => a.Email == CurrentUserService.CurrentUser.Email);
+        }
+
+        if (cours == null || apprenant == null)
         {
             message = "Impossible d'effectuer l'opération.";
             return;
         }
-
-        var apprenant = await _context.Utilisateurs.OfType<Apprenant>()
-            .Include(a => a.CoursSuivis)
-            .FirstOrDefaultAsync(a => a.Id == userId.Value);
 
         if (apprenant == null)
         {
@@ -88,16 +104,19 @@
             return;
         }
 
-        var userId = CurrentUserService.CurrentUser?.Id;
-        if (userId == null || cours == null)
+        Apprenant? apprenant = null;
+        if (CurrentUserService.LegacyUser != null && CurrentUserService.LegacyUser.Id != 0)
         {
-            message = "Impossible d'effectuer l'opération.";
-            return;
+            apprenant = await _context.Utilisateurs.OfType<Apprenant>()
+                .Include(a => a.CoursSuivis)
+                .FirstOrDefaultAsync(a => a.Id == CurrentUserService.LegacyUser.Id);
         }
-
-        var apprenant = await _context.Utilisateurs.OfType<Apprenant>()
-            .Include(a => a.CoursSuivis)
-            .FirstOrDefaultAsync(a => a.Id == userId.Value);
+        else if (CurrentUserService.CurrentUser != null && !string.IsNullOrEmpty(CurrentUserService.CurrentUser.Email))
+        {
+            apprenant = await _context.Utilisateurs.OfType<Apprenant>()
+                .Include(a => a.CoursSuivis)
+                .FirstOrDefaultAsync(a => a.Email == CurrentUserService.CurrentUser.Email);
+        }
 
         if (apprenant == null)
         {
@@ -171,26 +190,49 @@
         <button class="btn btn-link" @onclick='() => Navigation.NavigateTo("/cours")'>Retour à la liste</button>
 
         <div class="mt-4">
-            <h4>Chapitres</h4>
-            @if (cours.Chapitres != null && cours.Chapitres.Any())
+    <h4>Chapitres</h4>
+    @if (cours.Chapitres != null && cours.Chapitres.Any())
+    {
+        <ol>
+            @foreach (var ch in cours.Chapitres.OrderBy(ch => ch.Id))
             {
-                <ol>
-                    @foreach (var ch in cours.Chapitres.OrderBy(ch => ch.Id))
+                <li>
+                    <strong>@ch.Titre</strong>
+
+                    @if (!string.IsNullOrEmpty(ch.ContenuTexte))
                     {
-                        <li>
-                            <strong>@ch.Titre</strong>
-                            <div class="text-muted">@((ch.Contenu ?? string.Empty).Length > 200 ? (ch.Contenu ?? string.Empty).Substring(0,200) + "..." : ch.Contenu)</div>
-                            <div class="mt-1">
-                                <a href="#" @onclick="() => OpenChapter(ch.Id)">Voir le chapitre</a>
-                            </div>
-                        </li>
+                        <div class="text-muted">
+                            @(ch.ContenuTexte.Length > 200 
+                                ? ch.ContenuTexte.Substring(0,200) + "..." 
+                                : ch.ContenuTexte)
+                        </div>
                     }
-                </ol>
+                    else if (!string.IsNullOrEmpty(ch.VideoUrl))
+                    {
+                        <div class="mt-2">
+                            <video controls width="100%">
+                                <source src="@ch.VideoUrl" type="video/mp4" />
+                                Votre navigateur ne supporte pas la lecture vidéo.
+                            </video>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="text-muted">Aucun contenu disponible</div>
+                    }
+
+                    <div class="mt-1">
+                        <a href="#" @onclick="() => OpenChapter(ch.Id)">Voir le chapitre</a>
+                    </div>
+                </li>
             }
-            else
-            {
-                <div class="text-muted">Aucun chapitre pour ce cours.</div>
-            }
-        </div>
+        </ol>
+    }
+    else
+    {
+        <div class="text-muted">Aucun chapitre pour ce cours.</div>
+    }
+</div>
+
     }
 </div>

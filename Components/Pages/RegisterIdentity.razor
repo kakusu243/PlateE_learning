@@ -1,0 +1,105 @@
+@page "/register-identity"
+@using System.ComponentModel.DataAnnotations
+@using PlateE_learning.Models
+@using Microsoft.AspNetCore.Identity
+@inject UserManager<ApplicationUser> UserManager
+@inject SignInManager<ApplicationUser> SignInManager
+@inject NavigationManager Navigation
+
+<h3>Inscription (Identity)</h3>
+
+<EditForm Model="registerModel" OnValidSubmit="HandleRegister">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <div class="mb-3">
+        <label>Nom complet</label>
+        <InputText @bind-Value="registerModel.NomComplet" class="form-control" />
+    </div>
+    <div class="mb-3">
+        <label>Email</label>
+        <InputText @bind-Value="registerModel.Email" class="form-control" />
+    </div>
+    <div class="mb-3">
+        <label>Mot de passe</label>
+        <InputText @bind-Value="registerModel.Password" type="password" class="form-control" />
+    </div>
+    <div class="mb-3">
+        <label>Confirmer le mot de passe</label>
+        <InputText @bind-Value="registerModel.ConfirmPassword" type="password" class="form-control" />
+    </div>
+    <div class="mb-3">
+        <label>Rôle</label>
+        <InputSelect @bind-Value="registerModel.Role" class="form-control">
+            <option value="Apprenant">Apprenant</option>
+            <option value="Enseignant">Enseignant</option>
+        </InputSelect>
+    </div>
+
+    <button class="btn btn-primary">S'inscrire</button>
+
+    @if (!string.IsNullOrEmpty(statusMessage))
+    {
+        <div class="alert alert-info mt-3">@statusMessage</div>
+    }
+</EditForm>
+
+@code {
+    private RegisterModel registerModel = new();
+    private string? statusMessage;
+
+    public class RegisterModel
+    {
+        [Required]
+        public string NomComplet { get; set; } = string.Empty;
+
+        [Required]
+        [EmailAddress]
+        public string Email { get; set; } = string.Empty;
+
+        [Required]
+        [MinLength(8)]
+        public string Password { get; set; } = string.Empty;
+
+        [Required]
+        [Compare(nameof(Password))]
+        public string ConfirmPassword { get; set; } = string.Empty;
+
+        [Required]
+        public string Role { get; set; } = "Apprenant";
+    }
+
+    private async Task HandleRegister()
+    {
+        statusMessage = null;
+
+        var existing = await UserManager.FindByEmailAsync(registerModel.Email);
+        if (existing != null)
+        {
+            statusMessage = "Cet email est déjà utilisé.";
+            return;
+        }
+
+        var user = new ApplicationUser
+        {
+            UserName = registerModel.Email,
+            Email = registerModel.Email,
+            NomComplet = registerModel.NomComplet,
+            DateInscription = DateTime.UtcNow
+        };
+
+        var result = await UserManager.CreateAsync(user, registerModel.Password);
+        if (result.Succeeded)
+        {
+            // assign role
+            await UserManager.AddToRoleAsync(user, registerModel.Role);
+            // sign in
+            await SignInManager.SignInAsync(user, isPersistent: false);
+            Navigation.NavigateTo("/");
+        }
+        else
+        {
+            statusMessage = string.Join("; ", result.Errors.Select(e => e.Description));
+        }
+    }
+}

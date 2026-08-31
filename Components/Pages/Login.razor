@@ -5,7 +5,9 @@
 @using Microsoft.EntityFrameworkCore
 @using PlateE_learning.Data
 @inject NavigationManager Navigation
-@inject IDbContextFactory<AppDbContext> DbFactory
+@inject AppDbContext _context
+@inject Microsoft.AspNetCore.Identity.SignInManager<PlateE_learning.Models.ApplicationUser> SignInManager
+@inject Microsoft.AspNetCore.Identity.UserManager<PlateE_learning.Models.ApplicationUser> UserManager
 @inject CurrentUserService CurrentUserService
 
 <div class="container py-5">
@@ -83,17 +85,46 @@
 
         try
         {
-            using var context = DbFactory.CreateDbContext();
-
-            // Recherche asynchrone sécurisée
-            var user = await context.Utilisateurs
-                .FirstOrDefaultAsync(u => u.Email == Credentials.Email && u.MotDePasse == Credentials.Password);
-
-            if (user != null)
+            var result = await SignInManager.PasswordSignInAsync(Credentials.Email, Credentials.Password, Credentials.RememberMe, lockoutOnFailure: false);
+            if (result.Succeeded)
             {
-                CurrentUserService.SetUser(user);
+                var appUser = await UserManager.FindByEmailAsync(Credentials.Email);
+                if (appUser != null)
+                {
+                    CurrentUserService.SetUser(appUser);
+                }
+
                 Navigation.NavigateTo("/");
                 return;
+            }
+
+            // fallback: try legacy check (in case migration not done)
+            var legacy = await _context.Utilisateurs.FirstOrDefaultAsync(u => u.Email == Credentials.Email && u.MotDePasse == Credentials.Password);
+            if (legacy != null)
+            {
+                var existing = await UserManager.FindByEmailAsync(legacy.Email);
+                if (existing == null)
+                {
+                    var tempPwd = "Temp@" + Guid.NewGuid().ToString("N").Substring(0, 12) + "aA1!";
+                    var newUser = new PlateE_learning.Models.ApplicationUser
+                    {
+                        UserName = legacy.Email,
+                        Email = legacy.Email,
+                        NomComplet = legacy.NomComplet,
+                        PhotoUrl = legacy.PhotoUrl,
+                        DateInscription = legacy.DateInscription,
+                        MustChangePassword = true
+                    };
+                    var create = await UserManager.CreateAsync(newUser, tempPwd);
+                    if (create.Succeeded)
+                    {
+                        await UserManager.AddToRoleAsync(newUser, string.IsNullOrWhiteSpace(legacy.Role) ? "Apprenant" : legacy.Role);
+                        await SignInManager.PasswordSignInAsync(newUser.UserName, tempPwd, true, false);
+                        CurrentUserService.SetUser(newUser);
+                        Navigation.NavigateTo("/");
+                        return;
+                    }
+                }
             }
 
             ErrorMessage = "Identifiants incorrects.";

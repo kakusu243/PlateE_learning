@@ -3,7 +3,8 @@
 @using Microsoft.EntityFrameworkCore
 @using PlateE_learning.Models
 @using PlateE_learning.Data
-@inject IDbContextFactory<AppDbContext> DbFactory
+@inject AppDbContext _context
+
 
 <!-- Section Hero -->
 <section class="hero-section text-white py-5" id="home" style="background: linear-gradient(135deg, #0d6efd, #0a58ca); width: 100%;">
@@ -191,9 +192,9 @@
     {
         try
         {
-            using var context = DbFactory.CreateDbContext();
+            //using var context = _context;
 
-            ListCours = await context.Cours
+            ListCours = await _context.Cours
                 .OrderByDescending(c => c.Id)
                 .Take(3)
                 .Select(c => new CoursDto

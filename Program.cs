@@ -1,16 +1,19 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Http;
 using PlateE_learning.Data;
+using PlateE_learning.Models;
 using PlateE_learning.Components; // Assure-toi que cela pointe vers le dossier contenant ton App.razor
 
 var builder = WebApplication.CreateBuilder(args);
 
 // 1. 🔗 Connexion MySQL (via Pomelo) avec DbContextFactory (Indispensable pour Blazor Server)
-builder.Services.AddDbContextFactory<AppDbContext>(options =>
+builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseMySql(
         builder.Configuration.GetConnectionString("DefaultConnection"),
-        new MySqlServerVersion(new Version(8, 0, 36)) // Adapte à ta version de MySQL locale
-    )
-);
+        new MySqlServerVersion(new Version(8, 0, 36))
+    ));
+
 
 // 2. ⚙️ Services Blazor modernes (.NET 8)
 builder.Services.AddRazorComponents()
@@ -19,7 +22,34 @@ builder.Services.AddRazorComponents()
 // 3. 🛡️ Service utilisateur (scoped pour isoler chaque session de navigateur)
 builder.Services.AddScoped<CurrentUserService>();
 
-// 4. 🛡️ Service d'anti-falsification (obligatoire pour les formulaires en .NET 8)
+// 6. 🧰 Identity: utilisateurs et rôles persistés via EF Core
+builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
+{
+    options.Password.RequiredLength = 8;
+    options.Password.RequireNonAlphanumeric = true;
+    options.Password.RequireUppercase = true;
+    options.User.RequireUniqueEmail = true;
+    options.SignIn.RequireConfirmedAccount = false;
+})
+    .AddEntityFrameworkStores<AppDbContext>()
+    .AddDefaultTokenProviders();
+
+// Configure secure cookies for Identity
+builder.Services.ConfigureApplicationCookie(options =>
+{
+    options.Cookie.HttpOnly = true;
+    options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+    options.Cookie.SameSite = SameSiteMode.Strict;
+    options.LoginPath = "/login";
+    options.AccessDeniedPath = "/access-denied";
+    options.ExpireTimeSpan = TimeSpan.FromDays(14);
+    options.SlidingExpiration = true;
+});
+
+// 4. Service de feedback visuel Toast/Snackbar pour le workflow de création de cours
+builder.Services.AddScoped<ToastService>();
+
+// 5. 🛡️ Service d'anti-falsification (obligatoire pour les formulaires en .NET 8)
 builder.Services.AddAntiforgery();
 
 var app = builder.Build();
@@ -36,6 +66,10 @@ if (!app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 app.UseAntiforgery(); // Doit être placé avant le routage des composants
+
+// Authentication & Authorization
+app.UseAuthentication();
+app.UseAuthorization();
 
 app.MapStaticAssets(); // Gère les assets modernes de .NET 8
 

@@ -4,6 +4,8 @@
 @using Microsoft.EntityFrameworkCore
 @inject AppDbContext _context
 @inject CurrentUserService CurrentUserService
+@inject NavigationManager NavigationManager
+@inject ToastService ToastService
 
 <div class="container py-5">
     <div class="card shadow-sm">
@@ -96,6 +98,11 @@
                                                         <span class="small text-muted">@cours.Enseignant?.NomComplet ?? "Enseignant"</span>
                                                     </div>
                                                     <span class="badge bg-primary mt-2">@cours.Type</span>
+                                                    <div class="d-flex gap-2 mt-3">
+                                                        <a class="btn btn-sm btn-outline-primary" href="/cours/@cours.Id/chapitres">Chapitres</a>
+                                                        <a class="btn btn-sm btn-outline-secondary" href="/cours/@cours.Id/evaluations">Évaluations</a>
+                                                        <a class="btn btn-sm btn-outline-success" href="/cours/@cours.Id/publication">Publication</a>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
@@ -127,21 +134,67 @@
     }
 
     private async Task HandleCreateCourse()
+{
+    Enseignant? enseignantEntity = null;
+    if (CurrentUserService.LegacyUser != null && CurrentUserService.LegacyUser.Id != 0)
     {
-        if (CurrentUserService.CurrentUser is not Enseignant enseignant)
-        {
-            formMessage = "Vous devez être connecté en tant qu'enseignant pour créer un cours.";
-            return;
-        }
+        enseignantEntity = await _context.Utilisateurs.OfType<Enseignant>()
+            .FirstOrDefaultAsync(e => e.Id == CurrentUserService.LegacyUser.Id);
+    }
+    else if (CurrentUserService.CurrentUser != null && !string.IsNullOrEmpty(CurrentUserService.CurrentUser.Email))
+    {
+        enseignantEntity = await _context.Utilisateurs.OfType<Enseignant>()
+            .FirstOrDefaultAsync(e => e.Email == CurrentUserService.CurrentUser.Email);
+    }
 
-        newCourse.EnseignantId = enseignant.Id;
-        newCourse.Enseignant = enseignant;
+    if (enseignantEntity == null)
+    {
+        formMessage = "Vous devez être connecté en tant qu'enseignant pour créer un cours.";
+        ToastService.ShowError("Vous devez être connecté en tant qu'enseignant pour créer un cours.");
+        return;
+    }
 
-        _context.Cours.Add(newCourse);
+    // Crée un nouveau cours en liant uniquement l'Id de l'enseignant
+    ModelCours courseToCreate = new ModelCours
+    {
+        Titre = newCourse.Titre,
+        Description = newCourse.Description,
+        Type = newCourse.Type,
+        MiniatureUrl = newCourse.MiniatureUrl,
+        EnseignantId = enseignantEntity.Id   // ⚠️ on ne met pas Enseignant = enseignant
+    };
+
+    try
+    {
+        _context.Cours.Add(courseToCreate);
         await _context.SaveChangesAsync();
 
+        var createdCourseId = courseToCreate.Id;
         formMessage = "Cours créé avec succès !";
-        teacherCourses.Add(newCourse);
+        teacherCourses.Add(courseToCreate);
+        ToastService.ShowSuccess("Cours créé avec succès !");
+
+        // Réinitialiser le formulaire
         newCourse = new ModelCours { Type = "Vidéo", MiniatureUrl = "images/course-default.svg" };
+
+        // Redirection vers la gestion des chapitres du cours créé
+        NavigationManager.NavigateTo($"/cours/{createdCourseId}/chapitres");
     }
+    catch (DbUpdateException ex)
+    {
+        var inner = ex.InnerException;
+        var mysqlMessage = inner?.Message ?? ex.Message;
+
+        _context.ChangeTracker.Clear();
+        formMessage = "Impossible de créer le cours : conflit de clé ou état de base de données invalide.";
+        ToastService.ShowError($"Erreur de sauvegarde: {mysqlMessage}");
+    }
+    catch (Exception ex)
+    {
+        _context.ChangeTracker.Clear();
+        formMessage = "Impossible de créer le cours pour une raison technique.";
+        ToastService.ShowError($"Erreur technique: {ex.Message}");
+    }
+}
+
 }

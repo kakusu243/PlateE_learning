@@ -1,0 +1,250 @@
+@page "/cours/{id:int}/chapitres"
+@using Microsoft.EntityFrameworkCore
+@using PlateE_learning.Data
+@using CourseModel = PlateE_learning.Models.Cours
+@using ChapterModel = PlateE_learning.Models.Chapitre
+@inject AppDbContext _context
+@inject NavigationManager NavigationManager
+@inject ToastService ToastService
+
+<div class="container py-5">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h3 class="mb-1">Workflow de création</h3>
+            <p class="text-muted mb-0">Gestion des chapitres du cours</p>
+        </div>
+        <div class="d-flex gap-2">
+            <a class="btn btn-outline-secondary" href="/espace-enseignant">Retour espace enseignant</a>
+            <a class="btn btn-primary" href="/cours/@Id/evaluations">Étape suivante : évaluations</a>
+        </div>
+    </div>
+
+    @if (course is null)
+    {
+        <div class="alert alert-warning">Cours introuvable.</div>
+    }
+    else
+    {
+        <div class="card shadow-sm mb-4">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div>
+                        <h5 class="mb-1">@course.Titre</h5>
+                        <small class="text-muted">@course.Description</small>
+                    </div>
+                    <span class="badge bg-primary rounded-pill">@chapters.Count chapitre(s)</span>
+                </div>
+
+                <div class="progress">
+                    <div class="progress-bar" style="width:@ProgressValue%">@chapters.Count / 10</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-4">
+            <!-- Formulaire -->
+            <div class="col-lg-5">
+                <div class="card shadow-sm">
+                    <div class="card-body">
+                        <h5 class="mb-3">@(editingChapterId.HasValue ? "Modifier un chapitre" : "Ajouter un chapitre")</h5>
+                        <EditForm Model="chapterForm" OnValidSubmit="HandleSaveChapter">
+                            <DataAnnotationsValidator />
+                            <ValidationSummary />
+
+                            <div class="mb-3">
+                                <label class="form-label">Titre</label>
+                                <InputText @bind-Value="chapterForm.Titre" class="form-control" />
+                            </div>
+
+                            @if (course.Type == "Vidéo")
+                            {
+                                <div class="mb-3">
+                                    <label class="form-label">Vidéo du chapitre</label>
+                                    <InputFile OnChange="HandleVideoUpload" />
+                                    @if (!string.IsNullOrEmpty(videoFileName))
+                                    {
+                                        <small class="text-success">Fichier sélectionné : @videoFileName</small>
+                                    }
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="mb-3">
+                                    <label class="form-label">Contenu texte</label>
+                                    <InputTextArea @bind-Value="chapterForm.ContenuTexte" class="form-control" rows="5" />
+                                </div>
+                            }
+
+                            <div class="mb-3">
+                                <label class="form-label">Ordre d'affichage</label>
+                                <InputNumber @bind-Value="chapterForm.Ordre" class="form-control" />
+                            </div>
+
+                            <div class="d-flex gap-2">
+                                <button type="submit" class="btn btn-primary">@(editingChapterId.HasValue ? "Enregistrer" : "Ajouter")</button>
+                                @if (editingChapterId.HasValue)
+                                {
+                                    <button type="button" class="btn btn-outline-secondary" @onclick="ResetForm">Annuler</button>
+                                }
+                            </div>
+                        </EditForm>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Liste des chapitres -->
+            <div class="col-lg-7">
+                <div class="card shadow-sm">
+                    <div class="list-group">
+                        @foreach (var chapitre in chapters.OrderBy(c => c.Ordre))
+                        {
+                            <div class="list-group-item">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <h6 class="mb-1">@chapitre.Titre</h6>
+                                        <p class="mb-1 text-muted small">Chapitre n° @chapitre.Ordre</p>
+
+                                        @if (!string.IsNullOrEmpty(chapitre.ContenuTexte))
+                                        {
+                                            <p class="mb-0">@chapitre.ContenuTexte</p>
+                                        }
+                                        else if (!string.IsNullOrEmpty(chapitre.VideoUrl))
+                                        {
+                                            <video controls width="100%" class="mt-2">
+                                                <source src="@chapitre.VideoUrl" type="video/mp4" />
+                                                Votre navigateur ne supporte pas la lecture vidéo.
+                                            </video>
+                                        }
+                                        else
+                                        {
+                                            <p class="text-muted">Aucun contenu disponible</p>
+                                        }
+                                    </div>
+                                    <div class="btn-group">
+                                        <button class="btn btn-sm btn-outline-primary" @onclick="() => EditChapter(chapitre)">Modifier</button>
+                                        <button class="btn btn-sm btn-outline-danger" @onclick="() => DeleteChapter(chapitre)">Supprimer</button>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public int Id { get; set; }
+
+    private CourseModel? course;
+    private List<ChapterModel> chapters = new();
+    private ChapterModel chapterForm = new();
+    private int? editingChapterId;
+
+    private IBrowserFile? uploadedFile;
+    private string? videoFileName;
+
+    private int ProgressValue => chapters.Count == 0 ? 0 : Math.Clamp((chapters.Count * 100) / 10, 0, 100);
+
+    protected override async Task OnParametersSetAsync() => await LoadCourseAsync();
+
+    private async Task LoadCourseAsync()
+    {
+        course = await _context.Cours
+            .Include(c => c.Chapitres)
+            .FirstOrDefaultAsync(c => c.Id == Id);
+
+        chapters = course?.Chapitres?.ToList() ?? new List<ChapterModel>();
+    }
+
+    private void HandleVideoUpload(InputFileChangeEventArgs e)
+    {
+        uploadedFile = e.File;
+        videoFileName = uploadedFile.Name;
+    }
+
+    private async Task HandleSaveChapter()
+    {
+        if (course is null) return;
+
+        chapterForm.CoursId = course.Id;
+
+        if (course.Type == "Vidéo" && uploadedFile != null)
+        {
+            var path = Path.Combine("wwwroot/videos", uploadedFile.Name);
+            using var stream = File.Create(path);
+            await uploadedFile.OpenReadStream(maxAllowedSize: 1024 * 1024 * 100)
+                              .CopyToAsync(stream);
+
+            chapterForm.VideoUrl = $"videos/{uploadedFile.Name}";
+            chapterForm.ContenuTexte = null; // on vide le texte si c'est une vidéo
+        }
+        else
+        {
+            chapterForm.VideoUrl = null; // on vide la vidéo si c'est du texte
+        }
+
+        if (editingChapterId.HasValue)
+        {
+            var existing = await _context.Chapitres.FindAsync(editingChapterId.Value);
+            if (existing is null)
+            {
+                ToastService.ShowError("Chapitre introuvable pour modification.");
+                return;
+            }
+
+            existing.Titre = chapterForm.Titre;
+            existing.ContenuTexte = chapterForm.ContenuTexte;
+            existing.VideoUrl = chapterForm.VideoUrl;
+            existing.Ordre = chapterForm.Ordre;
+            existing.CoursId = course.Id;
+        }
+        else
+        {
+            await _context.Chapitres.AddAsync(new ChapterModel
+            {
+                Titre = chapterForm.Titre,
+                ContenuTexte = chapterForm.ContenuTexte,
+                VideoUrl = chapterForm.VideoUrl,
+                Ordre = chapterForm.Ordre,
+                CoursId = course.Id
+            });
+        }
+
+        await _context.SaveChangesAsync();
+        await LoadCourseAsync();
+        ToastService.ShowSuccess("Chapitre ajouté avec succès !");
+        ResetForm();
+    }
+
+    private void EditChapter(ChapterModel chapitre)
+    {
+        editingChapterId = chapitre.Id;
+        chapterForm = new ChapterModel
+        {
+            Id = chapitre.Id,
+            Titre = chapitre.Titre,
+            ContenuTexte = chapitre.ContenuTexte,
+            VideoUrl = chapitre.VideoUrl,
+            Ordre = chapitre.Ordre,
+            CoursId = chapitre.CoursId
+        };
+    }
+
+    private async Task DeleteChapter(ChapterModel chapitre)
+    {
+        _context.Chapitres.Remove(chapitre);
+        await _context.SaveChangesAsync();
+        await LoadCourseAsync();
+        ToastService.ShowInfo("Chapitre supprimé.");
+    }
+
+    private void ResetForm()
+    {
+        editingChapterId = null;
+        chapterForm = new ChapterModel();
+        uploadedFile = null;
+        videoFileName = null;
+    }
+}
