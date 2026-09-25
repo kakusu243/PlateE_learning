@@ -8,7 +8,12 @@
 @using SixLabors.ImageSharp.Processing
 @inject IDbContextFactory<AppDbContext> DbFactory
 @inject CurrentUserService CurrentUserService
+<<<<<<< HEAD
 @inject IWebHostEnvironment Env
+=======
+@inject NavigationManager NavigationManager
+@inject ToastService ToastService
+>>>>>>> 1d1b764cc5b3455f0cfe3aed61364bdb491f096f
 
 <PageTitle>Espace Enseignant - CRMS-UOB</PageTitle>
 
@@ -111,8 +116,34 @@
 
                             @if (isUploading)
                             {
+<<<<<<< HEAD
                                 <div class="mt-2 text-primary small">
                                     <span class="spinner-border spinner-border-sm me-1"></span> Traitement de la miniature...
+=======
+                                <div class="row g-3">
+                                    @foreach (var cours in teacherCourses)
+                                    {
+                                        <div class="col-md-12">
+                                            <div class="card h-100 course-card">
+                                                <img src="@cours.MiniatureUrl" class="img-fluid" alt="Miniature de @cours.Titre" />
+                                                <div class="card-body">
+                                                    <h6 class="card-title">@cours.Titre</h6>
+                                                    <p class="card-text text-muted">@cours.Description</p>
+                                                    <div class="d-flex align-items-center gap-2">
+                                                        <img src="@(cours.Enseignant?.PhotoUrl ?? "images/avatar-default.svg")" alt="Photo du professeur" class="teacher-avatar" />
+                                                        <span class="small text-muted">@cours.Enseignant?.NomComplet ?? "Enseignant"</span>
+                                                    </div>
+                                                    <span class="badge bg-primary mt-2">@cours.Type</span>
+                                                    <div class="d-flex gap-2 mt-3">
+                                                        <a class="btn btn-sm btn-outline-primary" href="/cours/@cours.Id/chapitres">Chapitres</a>
+                                                        <a class="btn btn-sm btn-outline-secondary" href="/cours/@cours.Id/evaluations">Évaluations</a>
+                                                        <a class="btn btn-sm btn-outline-success" href="/cours/@cours.Id/publication">Publication</a>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    }
+>>>>>>> 1d1b764cc5b3455f0cfe3aed61364bdb491f096f
                                 </div>
                             }
                             else if (!string.IsNullOrEmpty(previewUrl))
@@ -410,7 +441,11 @@
     }
 
     private async Task HandleCreateCourse()
+{
+    Enseignant? enseignantEntity = null;
+    if (CurrentUserService.LegacyUser != null && CurrentUserService.LegacyUser.Id != 0)
     {
+<<<<<<< HEAD
         if (CurrentUserService.CurrentUser is not Enseignant enseignant)
         {
             formMessage = "Seul un enseignant authentifié peut créer un cours.";
@@ -462,3 +497,65 @@
         }
     }
 }
+=======
+        enseignantEntity = await _context.Utilisateurs.OfType<Enseignant>()
+            .FirstOrDefaultAsync(e => e.Id == CurrentUserService.LegacyUser.Id);
+    }
+    else if (CurrentUserService.CurrentUser != null && !string.IsNullOrEmpty(CurrentUserService.CurrentUser.Email))
+    {
+        enseignantEntity = await _context.Utilisateurs.OfType<Enseignant>()
+            .FirstOrDefaultAsync(e => e.Email == CurrentUserService.CurrentUser.Email);
+    }
+
+    if (enseignantEntity == null)
+    {
+        formMessage = "Vous devez être connecté en tant qu'enseignant pour créer un cours.";
+        ToastService.ShowError("Vous devez être connecté en tant qu'enseignant pour créer un cours.");
+        return;
+    }
+
+    // Crée un nouveau cours en liant uniquement l'Id de l'enseignant
+    ModelCours courseToCreate = new ModelCours
+    {
+        Titre = newCourse.Titre,
+        Description = newCourse.Description,
+        Type = newCourse.Type,
+        MiniatureUrl = newCourse.MiniatureUrl,
+        EnseignantId = enseignantEntity.Id   // ⚠️ on ne met pas Enseignant = enseignant
+    };
+
+    try
+    {
+        _context.Cours.Add(courseToCreate);
+        await _context.SaveChangesAsync();
+
+        var createdCourseId = courseToCreate.Id;
+        formMessage = "Cours créé avec succès !";
+        teacherCourses.Add(courseToCreate);
+        ToastService.ShowSuccess("Cours créé avec succès !");
+
+        // Réinitialiser le formulaire
+        newCourse = new ModelCours { Type = "Vidéo", MiniatureUrl = "images/course-default.svg" };
+
+        // Redirection vers la gestion des chapitres du cours créé
+        NavigationManager.NavigateTo($"/cours/{createdCourseId}/chapitres");
+    }
+    catch (DbUpdateException ex)
+    {
+        var inner = ex.InnerException;
+        var mysqlMessage = inner?.Message ?? ex.Message;
+
+        _context.ChangeTracker.Clear();
+        formMessage = "Impossible de créer le cours : conflit de clé ou état de base de données invalide.";
+        ToastService.ShowError($"Erreur de sauvegarde: {mysqlMessage}");
+    }
+    catch (Exception ex)
+    {
+        _context.ChangeTracker.Clear();
+        formMessage = "Impossible de créer le cours pour une raison technique.";
+        ToastService.ShowError($"Erreur technique: {ex.Message}");
+    }
+}
+
+}
+>>>>>>> 1d1b764cc5b3455f0cfe3aed61364bdb491f096f

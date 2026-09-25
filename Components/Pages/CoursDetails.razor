@@ -10,6 +10,7 @@
 
 <PageTitle>@(CoursData?.Titre ?? "Détail du cours") - CRMS-UOB</PageTitle>
 
+<<<<<<< HEAD
 @if (IsLoading)
 {
     <div class="text-center py-5 my-5">
@@ -18,6 +19,143 @@
         </div>
         <p class="text-muted mt-2">Chargement des détails du cours...</p>
     </div>
+=======
+    private CoursModel? cours;
+    private bool isEnrolled;
+    private string message = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        cours = await _context.Cours
+            .Include(c => c.Chapitres)
+            .Include(c => c.Apprenants)
+            .FirstOrDefaultAsync(c => c.Id == id);
+
+        await UpdateEnrollmentStateAsync();
+    }
+
+    private async Task UpdateEnrollmentStateAsync()
+    {
+        isEnrolled = false;
+        if (CurrentUserService.IsAuthenticated && CurrentUserService.Role == "Apprenant")
+        {
+            Apprenant? apprenant = null;
+            if (CurrentUserService.LegacyUser != null && CurrentUserService.LegacyUser.Id != 0)
+            {
+                apprenant = await _context.Utilisateurs.OfType<Apprenant>()
+                    .Include(a => a.CoursSuivis)
+                    .FirstOrDefaultAsync(a => a.Id == CurrentUserService.LegacyUser.Id);
+            }
+            else if (CurrentUserService.CurrentUser != null && !string.IsNullOrEmpty(CurrentUserService.CurrentUser.Email))
+            {
+                apprenant = await _context.Utilisateurs.OfType<Apprenant>()
+                    .Include(a => a.CoursSuivis)
+                    .FirstOrDefaultAsync(a => a.Email == CurrentUserService.CurrentUser.Email);
+            }
+
+            if (apprenant != null && apprenant.CoursSuivis.Any(c => c.Id == id))
+                isEnrolled = true;
+        }
+    }
+
+    private async Task EnrollHere()
+    {
+        message = string.Empty;
+        if (!CurrentUserService.IsAuthenticated || CurrentUserService.Role != "Apprenant")
+        {
+            message = "Connecte-toi en tant qu'apprenant pour t'inscrire.";
+            return;
+        }
+
+        Apprenant? apprenant = null;
+        if (CurrentUserService.LegacyUser != null && CurrentUserService.LegacyUser.Id != 0)
+        {
+            apprenant = await _context.Utilisateurs.OfType<Apprenant>()
+                .Include(a => a.CoursSuivis)
+                .FirstOrDefaultAsync(a => a.Id == CurrentUserService.LegacyUser.Id);
+        }
+        else if (CurrentUserService.CurrentUser != null && !string.IsNullOrEmpty(CurrentUserService.CurrentUser.Email))
+        {
+            apprenant = await _context.Utilisateurs.OfType<Apprenant>()
+                .Include(a => a.CoursSuivis)
+                .FirstOrDefaultAsync(a => a.Email == CurrentUserService.CurrentUser.Email);
+        }
+
+        if (cours == null || apprenant == null)
+        {
+            message = "Impossible d'effectuer l'opération.";
+            return;
+        }
+
+        if (apprenant == null)
+        {
+            message = "Impossible d'effectuer l'opération.";
+            return;
+        }
+
+        if (!apprenant.CoursSuivis.Any(c => c.Id == id))
+        {
+            apprenant.CoursSuivis.Add(cours);
+            await _context.SaveChangesAsync();
+            isEnrolled = true;
+            message = "Inscription réussie.";
+        }
+
+        // redirect to refresh and show chapters
+        Navigation.NavigateTo($"/cours/{id}");
+    }
+
+    private async Task UnenrollHere()
+    {
+        message = string.Empty;
+        if (!CurrentUserService.IsAuthenticated || CurrentUserService.Role != "Apprenant")
+        {
+            message = "Connecte-toi en tant qu'apprenant pour te désinscrire.";
+            return;
+        }
+
+        Apprenant? apprenant = null;
+        if (CurrentUserService.LegacyUser != null && CurrentUserService.LegacyUser.Id != 0)
+        {
+            apprenant = await _context.Utilisateurs.OfType<Apprenant>()
+                .Include(a => a.CoursSuivis)
+                .FirstOrDefaultAsync(a => a.Id == CurrentUserService.LegacyUser.Id);
+        }
+        else if (CurrentUserService.CurrentUser != null && !string.IsNullOrEmpty(CurrentUserService.CurrentUser.Email))
+        {
+            apprenant = await _context.Utilisateurs.OfType<Apprenant>()
+                .Include(a => a.CoursSuivis)
+                .FirstOrDefaultAsync(a => a.Email == CurrentUserService.CurrentUser.Email);
+        }
+
+        if (apprenant == null)
+        {
+            message = "Impossible d'effectuer l'opération.";
+            return;
+        }
+
+        var found = apprenant.CoursSuivis.FirstOrDefault(c => c.Id == id);
+        if (found != null)
+        {
+            apprenant.CoursSuivis.Remove(found);
+            await _context.SaveChangesAsync();
+            isEnrolled = false;
+            message = "Désinscription réussie.";
+        }
+    }
+
+    private void StartCourse()
+    {
+        var first = cours?.Chapitres.OrderBy(c => c.Id).FirstOrDefault();
+        if (first != null)
+            Navigation.NavigateTo($"/cours/{id}/chapitre/{first.Id}");
+    }
+
+    private void OpenChapter(int chapitreId)
+    {
+        Navigation.NavigateTo($"/cours/{id}/chapitre/{chapitreId}");
+    }
+>>>>>>> 1d1b764cc5b3455f0cfe3aed61364bdb491f096f
 }
 else if (CoursData == null)
 {
@@ -94,6 +232,7 @@ else
                 <!-- COLONNE GAUCHE : PROGRESSION & TABLE DES MATIÈRES -->
                 <div class="col-lg-8">
 
+<<<<<<< HEAD
                     <!-- BLOC PROGRESSION (Si utilisateur connecté et inscrit) -->
                     @if (InscriptionUtilisateur != null)
                     {
@@ -228,6 +367,53 @@ else
     {
         CurrentUserService.OnChange += StateHasChanged;
         await ChargerDonneesAsync();
+=======
+        <div class="mt-4">
+    <h4>Chapitres</h4>
+    @if (cours.Chapitres != null && cours.Chapitres.Any())
+    {
+        <ol>
+            @foreach (var ch in cours.Chapitres.OrderBy(ch => ch.Id))
+            {
+                <li>
+                    <strong>@ch.Titre</strong>
+
+                    @if (!string.IsNullOrEmpty(ch.ContenuTexte))
+                    {
+                        <div class="text-muted">
+                            @(ch.ContenuTexte.Length > 200 
+                                ? ch.ContenuTexte.Substring(0,200) + "..." 
+                                : ch.ContenuTexte)
+                        </div>
+                    }
+                    else if (!string.IsNullOrEmpty(ch.VideoUrl))
+                    {
+                        <div class="mt-2">
+                            <video controls width="100%">
+                                <source src="@ch.VideoUrl" type="video/mp4" />
+                                Votre navigateur ne supporte pas la lecture vidéo.
+                            </video>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="text-muted">Aucun contenu disponible</div>
+                    }
+
+                    <div class="mt-1">
+                        <a href="#" @onclick="() => OpenChapter(ch.Id)">Voir le chapitre</a>
+                    </div>
+                </li>
+            }
+        </ol>
+    }
+    else
+    {
+        <div class="text-muted">Aucun chapitre pour ce cours.</div>
+    }
+</div>
+
+>>>>>>> 1d1b764cc5b3455f0cfe3aed61364bdb491f096f
     }
 
     public void Dispose()

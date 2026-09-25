@@ -1,0 +1,101 @@
+@page "/cours/{id:int}/publication"
+@using Microsoft.EntityFrameworkCore
+@using PlateE_learning.Data
+@using CourseModel = PlateE_learning.Models.Cours
+@using ChapterModel = PlateE_learning.Models.Chapitre
+@using EvaluationModel = PlateE_learning.Models.Evaluation
+@using CertificateModel = PlateE_learning.Models.Certificat
+@inject AppDbContext _context
+@inject NavigationManager NavigationManager
+@inject ToastService ToastService
+
+<div class="container py-5">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h3 class="mb-1">Publication du cours</h3>
+            <p class="text-muted mb-0">Finaliser et générer le certificat</p>
+        </div>
+        <div class="d-flex gap-2">
+            <a class="btn btn-outline-secondary" href="/cours/@Id/evaluations">Retour aux évaluations</a>
+        </div>
+    </div>
+
+    @if (course is null)
+    {
+        <div class="alert alert-warning">Cours introuvable.</div>
+    }
+    else
+    {
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h5 class="mb-3">Résumé avant publication</h5>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <div class="border rounded p-3 h-100">
+                            <div class="text-muted small text-uppercase">Cours</div>
+                            <h6 class="mt-2">@course.Titre</h6>
+                            <p class="mb-0 text-muted">@course.Description</p>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="border rounded p-3 h-100">
+                            <div class="text-muted small text-uppercase">Contenu</div>
+                            <p class="mt-2 mb-0">@chapters.Count chapitres</p>
+                            <p class="mb-0">@evaluations.Count évaluation(s)</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-flex gap-2 mt-4">
+                    <button class="btn btn-primary" @onclick="HandlePublish">Publier et générer le certificat</button>
+                    <a class="btn btn-outline-primary" href="/espace-enseignant">Retour à l’espace enseignant</a>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+
+    private CourseModel? course;
+    private List<ChapterModel> chapters = new();
+    private List<EvaluationModel> evaluations = new();
+
+    protected override async Task OnParametersSetAsync()
+    {
+        course = await _context.Cours
+            .Include(c => c.Chapitres)
+            .Include(c => c.Evaluations)
+            .FirstOrDefaultAsync(c => c.Id == Id);
+
+        chapters = course?.Chapitres?.ToList() ?? new List<ChapterModel>();
+        evaluations = course?.Evaluations?.ToList() ?? new List<EvaluationModel>();
+    }
+
+    private async Task HandlePublish()
+    {
+        if (course is null)
+        {
+            ToastService.ShowError("Impossible de publier un cours inconnu.");
+            return;
+        }
+
+        var certificat = new CertificateModel
+        {
+            NumeroUnique = Guid.NewGuid().ToString("N").Substring(0, 12).ToUpperInvariant(),
+            DateEmission = DateTime.UtcNow,
+            NomApprenant = "Apprenant",
+            TitreCours = course.Titre,
+            Signataire = "PlateE Learning",
+            Description = $"Certification du cours {course.Titre} publié le {DateTime.UtcNow:dd/MM/yyyy}"
+        };
+
+        await _context.Certificats.AddAsync(certificat);
+        await _context.SaveChangesAsync();
+
+        ToastService.ShowSuccess("Cours publié et certificat généré.");
+        NavigationManager.NavigateTo($"/certificat?courseId={course.Id}");
+    }
+}

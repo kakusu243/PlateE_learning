@@ -1,0 +1,122 @@
+@page "/cours/{id:int}/evaluations"
+@using Microsoft.EntityFrameworkCore
+@using PlateE_learning.Data
+@using EvaluationModel = PlateE_learning.Models.Evaluation
+@inject AppDbContext _context
+@inject NavigationManager NavigationManager
+@inject ToastService ToastService
+
+<div class="container py-5">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h3 class="mb-1">Évaluations du cours</h3>
+            <p class="text-muted mb-0">QCM et sondages</p>
+        </div>
+        <div class="d-flex gap-2">
+            <a class="btn btn-outline-secondary" href="/cours/@Id/chapitres">Retour aux chapitres</a>
+            <a class="btn btn-primary" href="/cours/@Id/publication">Étape suivante : publication</a>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-lg-5">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h5 class="mb-3">Ajouter une évaluation</h5>
+                    <EditForm Model="evaluationForm" OnValidSubmit="HandleSaveEvaluation">
+                        <DataAnnotationsValidator />
+                        <ValidationSummary />
+
+                        <div class="mb-3">
+                            <label class="form-label">Type d’évaluation</label>
+                            <InputSelect @bind-Value="evaluationForm.Type" class="form-select">
+                                <option value="QCM">QCM</option>
+                                <option value="Sondage">Sondage</option>
+                            </InputSelect>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Questions</label>
+                            <InputTextArea @bind-Value="evaluationForm.Questions" class="form-control" rows="5" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Note maximale</label>
+                            <InputNumber @bind-Value="evaluationForm.NoteMax" class="form-control" />
+                        </div>
+
+                        <button type="submit" class="btn btn-primary">Sauvegarder</button>
+                    </EditForm>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-7">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h5 class="mb-3">Évaluations déjà créées</h5>
+                    @if (!evaluations.Any())
+                    {
+                        <div class="alert alert-info">Aucune évaluation pour ce cours.</div>
+                    }
+                    else
+                    {
+                        <div class="list-group">
+                            @foreach (var evaluation in evaluations)
+                            {
+                                <div class="list-group-item">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <span class="badge bg-info text-dark mb-2">@evaluation.Type</span>
+                                            <p class="mb-1">@evaluation.Questions</p>
+                                            <small class="text-muted">Note max : @evaluation.NoteMax</small>
+                                        </div>
+                                        <button class="btn btn-sm btn-outline-danger" @onclick="() => DeleteEvaluation(evaluation)">Supprimer</button>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+
+    private EvaluationModel evaluationForm = new EvaluationModel { Type = "QCM" };
+    private List<EvaluationModel> evaluations = new();
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadEvaluationsAsync();
+    }
+
+    private async Task LoadEvaluationsAsync()
+    {
+        evaluations = await _context.Evaluations
+            .Where(e => e.CoursId == Id)
+            .ToListAsync();
+    }
+
+    private async Task HandleSaveEvaluation()
+    {
+        evaluationForm.CoursId = Id;
+        await _context.Evaluations.AddAsync(evaluationForm);
+        await _context.SaveChangesAsync();
+        await LoadEvaluationsAsync();
+        ToastService.ShowSuccess("Évaluation enregistrée avec succès.");
+        evaluationForm = new EvaluationModel { Type = "QCM" };
+    }
+
+    private async Task DeleteEvaluation(EvaluationModel evaluation)
+    {
+        _context.Evaluations.Remove(evaluation);
+        await _context.SaveChangesAsync();
+        await LoadEvaluationsAsync();
+        ToastService.ShowInfo("Évaluation supprimée.");
+    }
+}

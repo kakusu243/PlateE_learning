@@ -1,0 +1,38 @@
+@using PlateE_learning.Data
+@inject ToastService ToastService
+@implements IDisposable
+
+@if (ToastService.Messages.Any())
+{
+    <div aria-live="polite" class="toast-container position-fixed top-0 end-0 p-3" style="z-index:1060;">
+        @foreach (var toast in ToastService.Messages)
+        {
+            <div class="toast show align-items-center text-bg-@toast.Type border-0" role="alert" aria-live="assertive" aria-atomic="true">
+                <div class="d-flex">
+                    <div class="toast-body">
+                        @toast.Message
+                    </div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" aria-label="Close" @onclick="() => RemoveToast(toast)"></button>
+                </div>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    protected override void OnInitialized()
+    {
+        ToastService.OnChange += StateHasChanged;
+    }
+
+    public void Dispose()
+    {
+        ToastService.OnChange -= StateHasChanged;
+    }
+
+    private void RemoveToast(ToastItem toast)
+    {
+        ToastService.Messages.Remove(toast);
+        ToastService.NotifyStateChanged();
+    }
+}

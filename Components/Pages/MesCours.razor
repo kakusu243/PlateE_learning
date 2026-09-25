@@ -125,7 +125,21 @@
     {
         if (CurrentUserService.IsAuthenticated && CurrentUserService.Role == "Apprenant" && CurrentUserService.CurrentUser != null)
         {
+<<<<<<< HEAD
             int currentUserId = CurrentUserService.CurrentUser.Id;
+=======
+            var query = _context.Utilisateurs.OfType<Apprenant>().Include(a => a.CoursSuivis);
+
+            Apprenant? apprenant = null;
+            if (CurrentUserService.LegacyUser != null && CurrentUserService.LegacyUser.Id != 0)
+            {
+                apprenant = query.FirstOrDefault(a => a.Id == CurrentUserService.LegacyUser.Id);
+            }
+            else if (CurrentUserService.CurrentUser != null && !string.IsNullOrEmpty(CurrentUserService.CurrentUser.Email))
+            {
+                apprenant = query.FirstOrDefault(a => a.Email == CurrentUserService.CurrentUser.Email);
+            }
+>>>>>>> 1d1b764cc5b3455f0cfe3aed61364bdb491f096f
 
             enrolledCourses = await _context.Inscriptions
                 .Include(i => i.Cours)

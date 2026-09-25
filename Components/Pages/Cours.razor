@@ -179,7 +179,21 @@
     {
         try
         {
+<<<<<<< HEAD
             using var context = DbFactory.CreateDbContext();
+=======
+            var query = _context.Utilisateurs.OfType<Apprenant>().Include(a => a.CoursSuivis);
+
+            Apprenant? apprenant = null;
+            if (CurrentUserService.LegacyUser != null && CurrentUserService.LegacyUser.Id != 0)
+            {
+                apprenant = query.FirstOrDefault(a => a.Id == CurrentUserService.LegacyUser.Id);
+            }
+            else if (CurrentUserService.CurrentUser != null && !string.IsNullOrEmpty(CurrentUserService.CurrentUser.Email))
+            {
+                apprenant = query.FirstOrDefault(a => a.Email == CurrentUserService.CurrentUser.Email);
+            }
+>>>>>>> 1d1b764cc5b3455f0cfe3aed61364bdb491f096f
 
             // Requête basée sur vos entités d'origine
             ListCours = await context.Cours
@@ -239,4 +253,108 @@
         public string EnseignantNom { get; set; } = string.Empty;
         public string EnseignantPhotoUrl { get; set; } = string.Empty;
     }
+<<<<<<< HEAD
 }
+=======
+
+    private string GetFilterButtonClass(string? type)
+        => selectedType == type ? "btn btn-primary" : "btn btn-outline-secondary";
+
+    private async Task EnrollAsync(int coursId)
+    {
+        actionMessage = string.Empty;
+        if (!CurrentUserService.IsAuthenticated || CurrentUserService.Role != "Apprenant")
+        {
+            actionMessage = "Connecte-toi en tant qu'apprenant pour t'inscrire.";
+            return;
+        }
+
+        Apprenant? apprenant = null;
+        if (CurrentUserService.LegacyUser != null && CurrentUserService.LegacyUser.Id != 0)
+        {
+            apprenant = await _context.Utilisateurs.OfType<Apprenant>()
+                .Include(a => a.CoursSuivis)
+                .FirstOrDefaultAsync(a => a.Id == CurrentUserService.LegacyUser.Id);
+        }
+        else if (CurrentUserService.CurrentUser != null && !string.IsNullOrEmpty(CurrentUserService.CurrentUser.Email))
+        {
+            apprenant = await _context.Utilisateurs.OfType<Apprenant>()
+                .Include(a => a.CoursSuivis)
+                .FirstOrDefaultAsync(a => a.Email == CurrentUserService.CurrentUser.Email);
+        }
+
+        if (apprenant == null)
+        {
+            actionMessage = "Profil apprenant introuvable.";
+            return;
+        }
+
+        var cours = await _context.Cours.FindAsync(coursId);
+        if (cours == null)
+        {
+            actionMessage = "Cours introuvable.";
+            return;
+        }
+
+        if (apprenant.CoursSuivis.Any(c => c.Id == coursId))
+        {
+            actionMessage = "Tu es déjà inscrit à ce cours.";
+            enrolledCourseIds.Add(coursId);
+            return;
+        }
+
+        apprenant.CoursSuivis.Add(cours);
+        await _context.SaveChangesAsync();
+
+        enrolledCourseIds.Add(coursId);
+        actionMessage = "Inscription réussie !";
+
+        // Redirect to course detail page
+        Navigation.NavigateTo($"/cours/{coursId}");
+    }
+
+    private async Task UnenrollAsync(int coursId)
+    {
+        actionMessage = string.Empty;
+        if (!CurrentUserService.IsAuthenticated || CurrentUserService.Role != "Apprenant")
+        {
+            actionMessage = "Connecte-toi en tant qu'apprenant pour te désinscrire.";
+            return;
+        }
+
+        Apprenant? apprenant = null;
+        if (CurrentUserService.LegacyUser != null && CurrentUserService.LegacyUser.Id != 0)
+        {
+            apprenant = await _context.Utilisateurs.OfType<Apprenant>()
+                .Include(a => a.CoursSuivis)
+                .FirstOrDefaultAsync(a => a.Id == CurrentUserService.LegacyUser.Id);
+        }
+        else if (CurrentUserService.CurrentUser != null && !string.IsNullOrEmpty(CurrentUserService.CurrentUser.Email))
+        {
+            apprenant = await _context.Utilisateurs.OfType<Apprenant>()
+                .Include(a => a.CoursSuivis)
+                .FirstOrDefaultAsync(a => a.Email == CurrentUserService.CurrentUser.Email);
+        }
+
+        if (apprenant == null)
+        {
+            actionMessage = "Profil apprenant introuvable.";
+            return;
+        }
+
+        var cours = apprenant.CoursSuivis.FirstOrDefault(c => c.Id == coursId);
+        if (cours == null)
+        {
+            actionMessage = "Tu n'es pas inscrit à ce cours.";
+            enrolledCourseIds.Remove(coursId);
+            return;
+        }
+
+        apprenant.CoursSuivis.Remove(cours);
+        await _context.SaveChangesAsync();
+
+        enrolledCourseIds.Remove(coursId);
+        actionMessage = "Désinscription réussie.";
+    }
+}
+>>>>>>> 1d1b764cc5b3455f0cfe3aed61364bdb491f096f

@@ -1,9 +1,10 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using PlateE_learning.Models;
 
 namespace PlateE_learning.Data
 {
-    public class AppDbContext : DbContext
+    public class AppDbContext : IdentityDbContext<ApplicationUser>
     {
         public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
 
@@ -29,9 +30,17 @@ namespace PlateE_learning.Data
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
+<<<<<<< HEAD
             base.OnModelCreating(modelBuilder);
 
             // 1. Configuration de l'héritage TPH pour Utilisateur
+=======
+            // Call base to configure Identity schema first
+            base.OnModelCreating(modelBuilder);
+
+            // Configuration de l'héritage TPH (Table-per-Hierarchy) pour Utilisateur
+            // EF Core créera une seule table "Utilisateurs" avec une colonne "Discriminator" automatique.
+>>>>>>> 1d1b764cc5b3455f0cfe3aed61364bdb491f096f
             modelBuilder.Entity<Utilisateur>()
                 .HasDiscriminator<string>("UserType")
                 .HasValue<Utilisateur>("Utilisateur")

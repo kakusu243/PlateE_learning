@@ -1,11 +1,13 @@
-﻿@page "/profile"
+@page "/profile"
 @rendermode InteractiveServer
 @using PlateE_learning.Data
 @using PlateE_learning.Models
 @using Microsoft.EntityFrameworkCore
 @using System.IO
 @inject CurrentUserService CurrentUserService
-@inject IDbContextFactory<AppDbContext> DbFactory
+@inject AppDbContext _context
+@inject Microsoft.AspNetCore.Identity.UserManager<PlateE_learning.Models.ApplicationUser> UserManager
+
 @inject NavigationManager NavigationManager
 @inject IWebHostEnvironment WebHostEnvironment
 
@@ -36,7 +38,7 @@
 
                     <h4 class="fw-bold text-dark mb-1">@CurrentUserService.CurrentUser.NomComplet</h4>
                     <span class="badge bg-primary-subtle text-primary px-3 py-2 rounded-pill mb-4">
-                        @CurrentUserService.CurrentUser.Role
+                        @displayRole
                     </span>
 
                     <hr class="text-muted opacity-25 w-100" />
@@ -173,17 +175,38 @@
     private string emailMessage = string.Empty;
     private string passwordMessage = string.Empty;
 
-    protected override void OnInitialized()
+    private string displayRole = string.Empty;
+
+    protected override async Task OnInitializedAsync()
     {
         if (CurrentUserService.CurrentUser == null)
         {
             NavigationManager.NavigateTo("/login");
+            return;
         }
-        else
+
+        await SetDisplayRoleAsync();
+        // Initialiser les valeurs
+        ResetFormValues();
+    }
+
+    private async Task SetDisplayRoleAsync()
+    {
+        // Prefer legacy role when available
+        if (CurrentUserService.LegacyUser != null && CurrentUserService.LegacyUser.Id != 0)
         {
-            // Initialiser les valeurs
-            ResetFormValues();
+            displayRole = string.IsNullOrWhiteSpace(CurrentUserService.LegacyUser.Role) ? "Apprenant" : CurrentUserService.LegacyUser.Role;
+            return;
         }
+
+        if (CurrentUserService.CurrentUser != null)
+        {
+            var roles = await UserManager.GetRolesAsync(CurrentUserService.CurrentUser);
+            displayRole = roles.FirstOrDefault() ?? "Apprenant";
+            return;
+        }
+
+        displayRole = "Apprenant";
     }
 
     private void ResetFormValues()
@@ -248,20 +271,36 @@
             // Créer le chemin relatif pour la Base de données (ex: "images/profiles/user_5_photo.png")
             var relativePathForDb = $"images/profiles/{uniqueFileName}";
 
-            // Mettre à jour dans la Base de données MySQL
-            using var context = DbFactory.CreateDbContext();
-            var dbUser = await context.Utilisateurs.FindAsync(CurrentUserService.CurrentUser.Id);
-
-            if (dbUser != null)
+            // Mettre à jour dans la Base de données MySQL ou via Identity selon le type d'utilisateur
+            if (CurrentUserService.LegacyUser != null && CurrentUserService.LegacyUser.Id != 0)
             {
-                dbUser.PhotoUrl = relativePathForDb;
-                await context.SaveChangesAsync();
+                var dbUser = await _context.Utilisateurs.FindAsync(CurrentUserService.LegacyUser.Id);
+                if (dbUser != null)
+                {
+                    dbUser.PhotoUrl = relativePathForDb;
+                    await _context.SaveChangesAsync();
 
-                // Mettre à jour l'état de l'utilisateur connecté en mémoire
-                CurrentUserService.CurrentUser.PhotoUrl = relativePathForDb;
-                CurrentUserService.SetUser(CurrentUserService.CurrentUser); // Met à jour la Navbar instantanément !
+                    // Mettre à jour l'état de l'utilisateur en mémoire (compat)
+                    CurrentUserService.LegacyUser.PhotoUrl = relativePathForDb;
+                    if (CurrentUserService.CurrentUser != null)
+                    {
+                        CurrentUserService.CurrentUser.PhotoUrl = relativePathForDb;
+                        CurrentUserService.SetUser(CurrentUserService.CurrentUser);
+                    }
 
-                photoMessage = "Photo de profil mise à jour avec succès !";
+                    photoMessage = "Photo de profil mise à jour avec succès !";
+                }
+            }
+            else if (CurrentUserService.CurrentUser != null)
+            {
+                var appUser = CurrentUserService.CurrentUser;
+                appUser.PhotoUrl = relativePathForDb;
+                var result = await UserManager.UpdateAsync(appUser);
+                if (result.Succeeded)
+                {
+                    CurrentUserService.SetUser(appUser);
+                    photoMessage = "Photo de profil mise à jour avec succès !";
+                }
             }
         }
         catch (Exception ex)
@@ -293,30 +332,64 @@
 
         try
         {
-            using var context = DbFactory.CreateDbContext();
+            using var context = _context;
 
-            // Vérifier si l'email saisi est déjà pris par quelqu'un d'autre
-            var emailExists = await context.Utilisateurs.AnyAsync(u => u.Email == editedEmail && u.Id != CurrentUserService.CurrentUser.Id);
-            if (emailExists)
+            // Mise à jour selon le type d'utilisateur
+            if (CurrentUserService.LegacyUser != null && CurrentUserService.LegacyUser.Id != 0)
             {
-                emailMessage = "Cette adresse email est déjà utilisée par un autre compte.";
-                return;
+                // Vérifier si l'email saisi est déjà pris par quelqu'un d'autre
+                var emailExists = await _context.Utilisateurs.AnyAsync(u => u.Email == editedEmail && u.Id != CurrentUserService.LegacyUser.Id);
+                if (emailExists)
+                {
+                    emailMessage = "Cette adresse email est déjà utilisée par un autre compte.";
+                    return;
+                }
+
+                var dbUser = await _context.Utilisateurs.FindAsync(CurrentUserService.LegacyUser.Id);
+                if (dbUser != null)
+                {
+                    dbUser.NomComplet = editedNomComplet;
+                    dbUser.Email = editedEmail;
+                    await _context.SaveChangesAsync();
+
+                    // Mettre à jour la session
+                    CurrentUserService.LegacyUser.NomComplet = editedNomComplet;
+                    CurrentUserService.LegacyUser.Email = editedEmail;
+                    if (CurrentUserService.CurrentUser != null)
+                    {
+                        CurrentUserService.CurrentUser.NomComplet = editedNomComplet;
+                        CurrentUserService.CurrentUser.Email = editedEmail;
+                        CurrentUserService.SetUser(CurrentUserService.CurrentUser);
+                    }
+
+                    isEditingInfo = false; // Fermer le mode d'édition
+                    emailMessage = "Informations personnelles mises à jour avec succès !";
+                }
             }
-
-            var dbUser = await context.Utilisateurs.FindAsync(CurrentUserService.CurrentUser.Id);
-            if (dbUser != null)
+            else if (CurrentUserService.CurrentUser != null)
             {
-                dbUser.NomComplet = editedNomComplet;
-                dbUser.Email = editedEmail;
-                await context.SaveChangesAsync();
+                // Identity user update
+                var user = await UserManager.FindByIdAsync(CurrentUserService.CurrentUser.Id);
+                if (user != null)
+                {
+                    var existing = await UserManager.FindByEmailAsync(editedEmail);
+                    if (existing != null && existing.Id != user.Id)
+                    {
+                        emailMessage = "Cette adresse email est déjà utilisée par un autre compte.";
+                        return;
+                    }
 
-                // Mettre à jour la session
-                CurrentUserService.CurrentUser.NomComplet = editedNomComplet;
-                CurrentUserService.CurrentUser.Email = editedEmail;
-                CurrentUserService.SetUser(CurrentUserService.CurrentUser);
-
-                isEditingInfo = false; // Fermer le mode d'édition
-                emailMessage = "Informations personnelles mises à jour avec succès !";
+                    user.NomComplet = editedNomComplet;
+                    user.Email = editedEmail;
+                    user.UserName = editedEmail;
+                    var result = await UserManager.UpdateAsync(user);
+                    if (result.Succeeded)
+                    {
+                        CurrentUserService.SetUser(user);
+                        isEditingInfo = false;
+                        emailMessage = "Informations personnelles mises à jour avec succès !";
+                    }
+                }
             }
         }
         catch (Exception ex)
@@ -344,17 +417,38 @@
 
         try
         {
-            using var context = DbFactory.CreateDbContext();
-            var dbUser = await context.Utilisateurs.FindAsync(CurrentUserService.CurrentUser.Id);
-
-            if (dbUser != null)
+            //using var context = _context;
+            if (CurrentUserService.LegacyUser != null && CurrentUserService.LegacyUser.Id != 0)
             {
-                dbUser.MotDePasse = newPassword; // Hacher ici si nécessaire
-                await context.SaveChangesAsync();
+                var dbUser = await _context.Utilisateurs.FindAsync(CurrentUserService.LegacyUser.Id);
+                if (dbUser != null)
+                {
+                    dbUser.MotDePasse = newPassword; // Si tu veux, on peut hacher ici
+                    await _context.SaveChangesAsync();
 
-                newPassword = string.Empty;
-                confirmPassword = string.Empty;
-                passwordMessage = "Mot de passe modifié avec succès !";
+                    newPassword = string.Empty;
+                    confirmPassword = string.Empty;
+                    passwordMessage = "Mot de passe modifié avec succès !";
+                }
+            }
+            else if (CurrentUserService.CurrentUser != null)
+            {
+                var user = await UserManager.FindByIdAsync(CurrentUserService.CurrentUser.Id);
+                if (user != null)
+                {
+                    var token = await UserManager.GeneratePasswordResetTokenAsync(user);
+                    var res = await UserManager.ResetPasswordAsync(user, token, newPassword);
+                    if (res.Succeeded)
+                    {
+                        newPassword = string.Empty;
+                        confirmPassword = string.Empty;
+                        passwordMessage = "Mot de passe modifié avec succès !";
+                    }
+                    else
+                    {
+                        passwordMessage = string.Join("; ", res.Errors.Select(e => e.Description));
+                    }
+                }
             }
         }
         catch (Exception ex)

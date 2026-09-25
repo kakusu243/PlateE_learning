@@ -5,7 +5,8 @@
 @using Microsoft.EntityFrameworkCore
 @using PlateE_learning.Models
 @using PlateE_learning.Data
-@inject IDbContextFactory<AppDbContext> DbFactory
+@inject AppDbContext _context
+
 
 <div class="container py-5">
     <div class="row justify-content-center">
@@ -102,7 +103,7 @@
 
         try
         {
-            using var context = DbFactory.CreateDbContext();
+            using var context = _context;
 
             // 1. Vérification e-mail unique
             var emailExiste = await context.Utilisateurs.AnyAsync(u => u.Email == registerModel.Email);
