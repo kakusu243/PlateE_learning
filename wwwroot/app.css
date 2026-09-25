@@ -261,6 +261,77 @@ body {
     min-width: 220px;
 }
 
+.hero-course {
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+}
+
+/* Avatar Enseignant dans le Hero */
+.teacher-avatar-lg,
+.teacher-avatar-placeholder-lg {
+    width: 48px !important;
+    height: 48px !important;
+    min-width: 48px !important;
+    min-height: 48px !important;
+    max-width: 48px !important;
+    max-height: 48px !important;
+    border-radius: 50% !important;
+    object-fit: cover !important;
+    flex-shrink: 0 !important;
+}
+
+.course-detail-img {
+    height: 200px;
+    object-fit: cover;
+    width: 100%;
+}
+
+.accordion-button:not(.collapsed) {
+    background-color: #f8fafc;
+    color: #0284c7;
+    box-shadow: none;
+}
+
+.accordion-button:focus {
+    box-shadow: none;
+    border-color: rgba(0, 0, 0, 0.125);
+}
+
+.line-height-1 {
+    line-height: 1.1;
+}
+
+/* Fixation stricte de la taille de l'avatar de l'enseignant */
+.teacher-avatar {
+    width: 38px !important;
+    height: 38px !important;
+    max-width: 38px !important;
+    max-height: 38px !important;
+    min-width: 38px !important;
+    min-height: 38px !important;
+    border-radius: 50% !important;
+    object-fit: cover !important;
+    display: block !important;
+}
+
+.teacher-avatar-placeholder {
+    width: 38px !important;
+    height: 38px !important;
+    min-width: 38px !important;
+    min-height: 38px !important;
+    font-size: 0.85rem !important;
+    border-radius: 50% !important;
+}
+
+/* Gestion des espacements et textes longs */
+.line-height-1 {
+    line-height: 1.1 !important;
+}
+
+/* Empêche le chevauchement avec le bouton */
+.flex-shrink-0 {
+    flex-shrink: 0 !important;
+}
+
 @media (max-width: 991.98px) {
     .hero-section {
         padding: 4rem 0;
@@ -268,5 +339,16 @@ body {
 
     .hero-section .hero-image {
         margin-top: 2rem;
+    }
+}
+
+@media (max-width: 460px){
+    .hero-section{
+        height:90vh;
+        align-items:center;
+    }
+
+    .bullmsg{
+        max-width:300px;
     }
 }

@@ -4,13 +4,18 @@ using PlateE_learning.Components; // Assure-toi que cela pointe vers le dossier 
 
 var builder = WebApplication.CreateBuilder(args);
 
-// 1. 🔗 Connexion MySQL (via Pomelo) avec DbContextFactory (Indispensable pour Blazor Server)
+// 1. 🔗 Connexion MariaDB/MySQL (via Pomelo) ajustée sur MariaDB 10.4.32
 builder.Services.AddDbContextFactory<AppDbContext>(options =>
     options.UseMySql(
         builder.Configuration.GetConnectionString("DefaultConnection"),
-        new MySqlServerVersion(new Version(8, 0, 36)) // Adapte à ta version de MySQL locale
-    )
-);
+        new MariaDbServerVersion(new Version(10, 4, 32))
+    ));
+
+// Augmenter la limite pour les formulaires multipart / upload de fichiers grands (ex: 500 MB)
+builder.Services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(options =>
+{
+    options.MultipartBodyLengthLimit = 500 * 1024 * 1024; // 500 MB
+});
 
 // 2. ⚙️ Services Blazor modernes (.NET 8)
 builder.Services.AddRazorComponents()
@@ -36,7 +41,6 @@ if (!app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 app.UseAntiforgery(); // Doit être placé avant le routage des composants
-
 app.MapStaticAssets(); // Gère les assets modernes de .NET 8
 
 // 🌟 Configurer l'application pour utiliser ton App.razor avec le mode interactif

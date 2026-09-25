@@ -22,21 +22,6 @@ namespace PlateE_learning.Migrations
 
             MySqlModelBuilderExtensions.AutoIncrementColumns(modelBuilder);
 
-            modelBuilder.Entity("ApprenantCours", b =>
-                {
-                    b.Property<int>("ApprenantsId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("CoursSuivisId")
-                        .HasColumnType("int");
-
-                    b.HasKey("ApprenantsId", "CoursSuivisId");
-
-                    b.HasIndex("CoursSuivisId");
-
-                    b.ToTable("ApprenantCours");
-                });
-
             modelBuilder.Entity("PlateE_learning.Models.Certificat", b =>
                 {
                     b.Property<int>("Id")
@@ -45,7 +30,10 @@ namespace PlateE_learning.Migrations
 
                     MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<int?>("ApprenantId")
+                    b.Property<int>("ApprenantId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("CoursId")
                         .HasColumnType("int");
 
                     b.Property<DateTime>("DateEmission")
@@ -75,6 +63,8 @@ namespace PlateE_learning.Migrations
 
                     b.HasIndex("ApprenantId");
 
+                    b.HasIndex("CoursId");
+
                     b.ToTable("Certificats");
                 });
 
@@ -86,10 +76,6 @@ namespace PlateE_learning.Migrations
 
                     MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<string>("Contenu")
-                        .IsRequired()
-                        .HasColumnType("longtext");
-
                     b.Property<int>("CoursId")
                         .HasColumnType("int");
 
@@ -100,11 +86,20 @@ namespace PlateE_learning.Migrations
                         .IsRequired()
                         .HasColumnType("longtext");
 
+                    b.Property<string>("TypeChapitre")
+                        .IsRequired()
+                        .HasMaxLength(8)
+                        .HasColumnType("varchar(8)");
+
                     b.HasKey("Id");
 
                     b.HasIndex("CoursId");
 
                     b.ToTable("Chapitres");
+
+                    b.HasDiscriminator<string>("TypeChapitre").HasValue("Chapitre");
+
+                    b.UseTphMappingStrategy();
                 });
 
             modelBuilder.Entity("PlateE_learning.Models.Cours", b =>
@@ -114,6 +109,9 @@ namespace PlateE_learning.Migrations
                         .HasColumnType("int");
 
                     MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int?>("ApprenantId")
+                        .HasColumnType("int");
 
                     b.Property<string>("Description")
                         .IsRequired()
@@ -126,6 +124,10 @@ namespace PlateE_learning.Migrations
                         .IsRequired()
                         .HasColumnType("longtext");
 
+                    b.Property<string>("Statut")
+                        .IsRequired()
+                        .HasColumnType("longtext");
+
                     b.Property<string>("Titre")
                         .IsRequired()
                         .HasColumnType("longtext");
@@ -135,6 +137,8 @@ namespace PlateE_learning.Migrations
                         .HasColumnType("longtext");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("ApprenantId");
 
                     b.HasIndex("EnseignantId");
 
@@ -149,13 +153,13 @@ namespace PlateE_learning.Migrations
 
                     MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<int>("CoursId")
+                    b.Property<int>("ChapitreId")
                         .HasColumnType("int");
 
                     b.Property<int>("NoteMax")
                         .HasColumnType("int");
 
-                    b.Property<string>("Questions")
+                    b.Property<string>("Titre")
                         .IsRequired()
                         .HasColumnType("longtext");
 
@@ -165,9 +169,168 @@ namespace PlateE_learning.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("CoursId");
+                    b.HasIndex("ChapitreId")
+                        .IsUnique();
 
                     b.ToTable("Evaluations");
+                });
+
+            modelBuilder.Entity("PlateE_learning.Models.Forum", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("CoursId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasColumnType("longtext");
+
+                    b.Property<string>("Nom")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("varchar(150)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CoursId");
+
+                    b.ToTable("Forums");
+                });
+
+            modelBuilder.Entity("PlateE_learning.Models.Inscription", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("ApprenantId")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("CertificatDelivre")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<string>("CodeVerificationCertificat")
+                        .HasColumnType("longtext");
+
+                    b.Property<int>("CoursId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("DateCompletion")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime?>("DateDelivranceCertificat")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime>("DateInscription")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<bool>("EstEligibleCertificat")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<bool>("EstTermine")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<double?>("NoteFinale")
+                        .HasColumnType("double");
+
+                    b.Property<int>("Progression")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ApprenantId");
+
+                    b.HasIndex("CoursId");
+
+                    b.ToTable("Inscriptions");
+                });
+
+            modelBuilder.Entity("PlateE_learning.Models.MessageForum", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("AuteurId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Contenu")
+                        .IsRequired()
+                        .HasColumnType("longtext");
+
+                    b.Property<DateTime>("DateCreation")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int>("ForumId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("MessageReponduAuteur")
+                        .HasColumnType("longtext");
+
+                    b.Property<string>("MessageReponduContenu")
+                        .HasColumnType("longtext");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AuteurId");
+
+                    b.HasIndex("ForumId");
+
+                    b.ToTable("MessagesForum");
+                });
+
+            modelBuilder.Entity("PlateE_learning.Models.Question", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Enonce")
+                        .IsRequired()
+                        .HasColumnType("longtext");
+
+                    b.Property<int>("EvaluationId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("OptionA")
+                        .IsRequired()
+                        .HasColumnType("longtext");
+
+                    b.Property<string>("OptionB")
+                        .IsRequired()
+                        .HasColumnType("longtext");
+
+                    b.Property<string>("OptionC")
+                        .IsRequired()
+                        .HasColumnType("longtext");
+
+                    b.Property<string>("OptionD")
+                        .IsRequired()
+                        .HasColumnType("longtext");
+
+                    b.Property<int>("Points")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ReponseCorrecte")
+                        .IsRequired()
+                        .HasColumnType("longtext");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EvaluationId");
+
+                    b.ToTable("Questions");
                 });
 
             modelBuilder.Entity("PlateE_learning.Models.Utilisateur", b =>
@@ -215,6 +378,66 @@ namespace PlateE_learning.Migrations
                     b.UseTphMappingStrategy();
                 });
 
+            modelBuilder.Entity("ResultatEvaluation", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("ApprenantId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("DateTentative")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<bool>("EstReussi")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<int>("EvaluationId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("PointsMax")
+                        .HasColumnType("int");
+
+                    b.Property<int>("PointsObtenus")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ApprenantId");
+
+                    b.HasIndex("EvaluationId");
+
+                    b.ToTable("ResultatEvaluations");
+                });
+
+            modelBuilder.Entity("PlateE_learning.Models.ChapitreTexte", b =>
+                {
+                    b.HasBaseType("PlateE_learning.Models.Chapitre");
+
+                    b.Property<string>("ContenuHtml")
+                        .IsRequired()
+                        .HasColumnType("longtext");
+
+                    b.HasDiscriminator().HasValue("Texte");
+                });
+
+            modelBuilder.Entity("PlateE_learning.Models.ChapitreVideo", b =>
+                {
+                    b.HasBaseType("PlateE_learning.Models.Chapitre");
+
+                    b.Property<string>("CheminFichierVideo")
+                        .IsRequired()
+                        .HasColumnType("longtext");
+
+                    b.Property<int>("DureeEnSecondes")
+                        .HasColumnType("int");
+
+                    b.HasDiscriminator().HasValue("Video");
+                });
+
             modelBuilder.Entity("PlateE_learning.Models.Administrateur", b =>
                 {
                     b.HasBaseType("PlateE_learning.Models.Utilisateur");
@@ -236,27 +459,23 @@ namespace PlateE_learning.Migrations
                     b.HasDiscriminator().HasValue("Enseignant");
                 });
 
-            modelBuilder.Entity("ApprenantCours", b =>
-                {
-                    b.HasOne("PlateE_learning.Models.Apprenant", null)
-                        .WithMany()
-                        .HasForeignKey("ApprenantsId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("PlateE_learning.Models.Cours", null)
-                        .WithMany()
-                        .HasForeignKey("CoursSuivisId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
             modelBuilder.Entity("PlateE_learning.Models.Certificat", b =>
                 {
-                    b.HasOne("PlateE_learning.Models.Apprenant", null)
+                    b.HasOne("PlateE_learning.Models.Apprenant", "Apprenant")
                         .WithMany("Certificats")
                         .HasForeignKey("ApprenantId")
-                        .OnDelete(DeleteBehavior.Cascade);
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("PlateE_learning.Models.Cours", "Cours")
+                        .WithMany("Certificats")
+                        .HasForeignKey("CoursId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Apprenant");
+
+                    b.Navigation("Cours");
                 });
 
             modelBuilder.Entity("PlateE_learning.Models.Chapitre", b =>
@@ -272,6 +491,10 @@ namespace PlateE_learning.Migrations
 
             modelBuilder.Entity("PlateE_learning.Models.Cours", b =>
                 {
+                    b.HasOne("PlateE_learning.Models.Apprenant", null)
+                        .WithMany("CoursSuivis")
+                        .HasForeignKey("ApprenantId");
+
                     b.HasOne("PlateE_learning.Models.Enseignant", "Enseignant")
                         .WithMany("CoursCrees")
                         .HasForeignKey("EnseignantId")
@@ -282,8 +505,19 @@ namespace PlateE_learning.Migrations
 
             modelBuilder.Entity("PlateE_learning.Models.Evaluation", b =>
                 {
+                    b.HasOne("PlateE_learning.Models.Chapitre", "Chapitre")
+                        .WithOne("Evaluation")
+                        .HasForeignKey("PlateE_learning.Models.Evaluation", "ChapitreId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Chapitre");
+                });
+
+            modelBuilder.Entity("PlateE_learning.Models.Forum", b =>
+                {
                     b.HasOne("PlateE_learning.Models.Cours", "Cours")
-                        .WithMany("Evaluations")
+                        .WithMany()
                         .HasForeignKey("CoursId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -291,16 +525,103 @@ namespace PlateE_learning.Migrations
                     b.Navigation("Cours");
                 });
 
+            modelBuilder.Entity("PlateE_learning.Models.Inscription", b =>
+                {
+                    b.HasOne("PlateE_learning.Models.Apprenant", "Apprenant")
+                        .WithMany()
+                        .HasForeignKey("ApprenantId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("PlateE_learning.Models.Cours", "Cours")
+                        .WithMany("Inscriptions")
+                        .HasForeignKey("CoursId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Apprenant");
+
+                    b.Navigation("Cours");
+                });
+
+            modelBuilder.Entity("PlateE_learning.Models.MessageForum", b =>
+                {
+                    b.HasOne("PlateE_learning.Models.Utilisateur", "Auteur")
+                        .WithMany()
+                        .HasForeignKey("AuteurId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("PlateE_learning.Models.Forum", "Forum")
+                        .WithMany("Messages")
+                        .HasForeignKey("ForumId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Auteur");
+
+                    b.Navigation("Forum");
+                });
+
+            modelBuilder.Entity("PlateE_learning.Models.Question", b =>
+                {
+                    b.HasOne("PlateE_learning.Models.Evaluation", "Evaluation")
+                        .WithMany("Questions")
+                        .HasForeignKey("EvaluationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Evaluation");
+                });
+
+            modelBuilder.Entity("ResultatEvaluation", b =>
+                {
+                    b.HasOne("PlateE_learning.Models.Utilisateur", "Apprenant")
+                        .WithMany()
+                        .HasForeignKey("ApprenantId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("PlateE_learning.Models.Evaluation", "Evaluation")
+                        .WithMany()
+                        .HasForeignKey("EvaluationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Apprenant");
+
+                    b.Navigation("Evaluation");
+                });
+
+            modelBuilder.Entity("PlateE_learning.Models.Chapitre", b =>
+                {
+                    b.Navigation("Evaluation");
+                });
+
             modelBuilder.Entity("PlateE_learning.Models.Cours", b =>
                 {
+                    b.Navigation("Certificats");
+
                     b.Navigation("Chapitres");
 
-                    b.Navigation("Evaluations");
+                    b.Navigation("Inscriptions");
+                });
+
+            modelBuilder.Entity("PlateE_learning.Models.Evaluation", b =>
+                {
+                    b.Navigation("Questions");
+                });
+
+            modelBuilder.Entity("PlateE_learning.Models.Forum", b =>
+                {
+                    b.Navigation("Messages");
                 });
 
             modelBuilder.Entity("PlateE_learning.Models.Apprenant", b =>
                 {
                     b.Navigation("Certificats");
+
+                    b.Navigation("CoursSuivis");
                 });
 
             modelBuilder.Entity("PlateE_learning.Models.Enseignant", b =>

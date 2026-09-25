@@ -1,113 +1,282 @@
 @page "/espace-enseignant"
 @using PlateE_learning.Data
+@using PlateE_learning.Models
 @using ModelCours = PlateE_learning.Models.Cours
+@using ModelInscription = PlateE_learning.Models.Inscription
 @using Microsoft.EntityFrameworkCore
-@inject AppDbContext _context
+@using SixLabors.ImageSharp
+@using SixLabors.ImageSharp.Processing
+@inject IDbContextFactory<AppDbContext> DbFactory
 @inject CurrentUserService CurrentUserService
+@inject IWebHostEnvironment Env
 
-<div class="container py-5">
-    <div class="card shadow-sm">
-        <div class="card-body">
-            <h3 class="mb-3">Mon espace enseignant</h3>
-            <p class="text-muted mb-4">Bienvenue @CurrentUserService.CurrentUser?.NomComplet. Gère tes formations et consulte les performances.</p>
+<PageTitle>Espace Enseignant - CRMS-UOB</PageTitle>
 
-            <div class="row g-4">
-                <div class="col-lg-4">
-                    <div class="feature-box p-4 rounded shadow-sm">
-                        <h5 class="fw-bold">Cours disponibles</h5>
-                        <p class="text-muted">Liste de tous les cours que tu peux animer ou enrichir.</p>
+<div class="container py-4">
+    <!-- En-tête -->
+    <div class="p-4 mb-4 bg-primary text-white rounded-3 shadow-sm d-flex justify-content-between align-items-center flex-wrap gap-3">
+        <div>
+            <h2 class="fw-bold mb-1">Mon Espace Enseignant</h2>
+            <p class="mb-0 text-white-50">
+                Bienvenue, <strong>@(CurrentUserService.CurrentUser?.NomComplet ?? "Enseignant")</strong> ! Gère tes cours, tes chapitres et l'éligibilité aux certificats.
+            </p>
+        </div>
+        <div>
+            <a href="#form-creation-cours" class="btn btn-light text-primary fw-semibold">
+                <i class="bi bi-plus-circle-fill me-1"></i> Nouveau cours
+            </a>
+        </div>
+    </div>
+
+    <!-- Statistiques -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm rounded-3 h-100 p-3 bg-body">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="p-3 bg-primary-subtle text-primary rounded-3 fs-3">
+                        <i class="bi bi-journal-bookmark-fill"></i>
                     </div>
-                </div>
-                <div class="col-lg-4">
-                    <div class="feature-box p-4 rounded shadow-sm">
-                        <h5 class="fw-bold">Actions rapides</h5>
-                        <p class="text-muted">Ajoute un nouveau cours ou mets à jour un cours existant depuis le back-office.</p>
-                    </div>
-                </div>
-                <div class="col-lg-4">
-                    <div class="feature-box p-4 rounded shadow-sm">
-                        <h5 class="fw-bold">Support</h5>
-                        <p class="text-muted">Besoin d’aide ? Contacte l’administrateur pour gérer tes contenus.</p>
+                    <div>
+                        <h6 class="text-muted mb-0 small">Mes cours créés</h6>
+                        <h3 class="fw-bold mb-0">@teacherCourses.Count</h3>
                     </div>
                 </div>
             </div>
-
-            <div class="row g-4">
-                <div class="col-lg-6">
-                    <div class="card mb-4 shadow-sm">
-                        <div class="card-body">
-                            <h5 class="mb-3">Ajouter un nouveau cours</h5>
-                            <EditForm Model="@newCourse" OnValidSubmit="HandleCreateCourse">
-                                <DataAnnotationsValidator />
-                                <ValidationSummary />
-
-                                <div class="mb-3">
-                                    <label class="form-label">Titre du cours</label>
-                                    <InputText @bind-Value="newCourse.Titre" class="form-control" />
-                                </div>
-
-                                <div class="mb-3">
-                                    <label class="form-label">Description courte</label>
-                                    <InputTextArea @bind-Value="newCourse.Description" class="form-control" Rows="3" />
-                                </div>
-
-                                <div class="mb-3">
-                                    <label class="form-label">Type de cours</label>
-                                    <InputSelect @bind-Value="newCourse.Type" class="form-select">
-                                        <option value="Vidéo">Vidéo</option>
-                                        <option value="Texte">Texte</option>
-                                    </InputSelect>
-                                </div>
-
-                                <div class="mb-3">
-                                    <label class="form-label">URL de la miniature</label>
-                                    <InputText @bind-Value="newCourse.MiniatureUrl" class="form-control" />
-                                    <div class="form-text">Path relatif depuis wwwroot, par exemple <code>images/course-default.svg</code>.</div>
-                                </div>
-
-                                <button type="submit" class="btn btn-primary">Créer le cours</button>
-
-                                @if (!string.IsNullOrEmpty(formMessage))
-                                {
-                                    <div class="alert alert-success mt-3">@formMessage</div>
-                                }
-                            </EditForm>
-                        </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm rounded-3 h-100 p-3 bg-body">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="p-3 bg-success-subtle text-success rounded-3 fs-3">
+                        <i class="bi bi-layers-fill"></i>
+                    </div>
+                    <div>
+                        <h6 class="text-muted mb-0 small">Total chapitres</h6>
+                        <h3 class="fw-bold mb-0">@teacherCourses.Sum(c => c.Chapitres?.Count ?? 0)</h3>
                     </div>
                 </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm rounded-3 h-100 p-3 bg-body">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="p-3 bg-info-subtle text-info rounded-3 fs-3">
+                        <i class="bi bi-people-fill"></i>
+                    </div>
+                    <div>
+                        <h6 class="text-muted mb-0 small">Étudiants inscrits</h6>
+                        <h3 class="fw-bold mb-0">@teacherCourses.Sum(c => c.Inscriptions?.Count ?? 0)</h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
-                <div class="col-lg-6">
-                    <div class="card mb-4 shadow-sm">
-                        <div class="card-body">
-                            <h5 class="mb-3">Cours existants</h5>
-                            @if (teacherCourses.Any())
+    <div class="row g-4">
+        <!-- Formulaire de création -->
+        <div class="col-lg-5" id="form-creation-cours">
+            <div class="card border-0 shadow-sm rounded-3">
+                <div class="card-header bg-white py-3 border-0 fw-bold fs-5">
+                    <i class="bi bi-plus-square text-primary me-2"></i> Ajouter un nouveau cours
+                </div>
+                <div class="card-body">
+                    <EditForm Model="@newCourse" OnValidSubmit="HandleCreateCourse">
+                        <DataAnnotationsValidator />
+                        <ValidationSummary class="text-danger small mb-3" />
+
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Titre du cours <span class="text-danger">*</span></label>
+                            <InputText @bind-Value="newCourse.Titre" class="form-control" placeholder="Ex: Programation C# & Blazor" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Description courte</label>
+                            <InputTextArea @bind-Value="newCourse.Description" class="form-control" Rows="3" placeholder="Présentation synthétique..." />
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Type de cours</label>
+                            <InputSelect @bind-Value="newCourse.Type" class="form-select">
+                                <option value="Vidéo">Vidéo</option>
+                                <option value="Texte">Texte</option>
+                            </InputSelect>
+                        </div>
+
+                        <!-- Upload d'image personnalisé avec prévisualisation -->
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Miniature du cours (Format 16:9)</label>
+                            <div class="input-group">
+                                <InputFile OnChange="HandleFileSelected" accept=".jpg,.jpeg,.png,.webp" class="form-control" id="inputGroupFile" />
+                            </div>
+                            <div class="form-text">L'image sera automatiquement redimensionnée au format standard (1280x720).</div>
+
+                            @if (isUploading)
                             {
-                                <div class="row g-3">
-                                    @foreach (var cours in teacherCourses)
-                                    {
-                                        <div class="col-md-12">
-                                            <div class="card h-100 course-card">
-                                                <img src="@cours.MiniatureUrl" class="img-fluid" alt="Miniature de @cours.Titre" />
-                                                <div class="card-body">
-                                                    <h6 class="card-title">@cours.Titre</h6>
-                                                    <p class="card-text text-muted">@cours.Description</p>
-                                                    <div class="d-flex align-items-center gap-2">
-                                                        <img src="@(cours.Enseignant?.PhotoUrl ?? "images/avatar-default.svg")" alt="Photo du professeur" class="teacher-avatar" />
-                                                        <span class="small text-muted">@cours.Enseignant?.NomComplet ?? "Enseignant"</span>
-                                                    </div>
-                                                    <span class="badge bg-primary mt-2">@cours.Type</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    }
+                                <div class="mt-2 text-primary small">
+                                    <span class="spinner-border spinner-border-sm me-1"></span> Traitement de la miniature...
                                 </div>
+                            }
+                            else if (!string.IsNullOrEmpty(previewUrl))
+                            {
+                                <div class="mt-2 text-center">
+                                    <img src="@previewUrl" class="img-thumbnail rounded" style="max-height: 140px; aspect-ratio: 16/9; object-fit: cover;" alt="Aperçu miniature" />
+                                </div>
+                            }
+                        </div>
+
+                        <button type="submit" class="btn btn-primary w-100 py-2 fw-semibold" disabled="@(isSubmitting || isUploading)">
+                            @if (isSubmitting)
+                            {
+                                <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                                <span>Création en cours...</span>
                             }
                             else
                             {
-                                <div class="alert alert-info">Aucun cours trouvé pour le moment.</div>
+                                <i class="bi bi-check-lg me-1"></i>
+                                <span>Enregistrer le cours</span>
+                            }
+                        </button>
+
+                        @if (!string.IsNullOrEmpty(formMessage))
+                        {
+                            <div class="alert @(isSuccess ? "alert-success" : "alert-danger") mt-3 mb-0 small">
+                                @formMessage
+                            </div>
+                        }
+                    </EditForm>
+                </div>
+            </div>
+        </div>
+
+        <!-- Liste des cours & Gestion des étudiants -->
+        <div class="col-lg-7">
+            <div class="card border-0 shadow-sm rounded-3">
+                <div class="card-header bg-white py-3 border-0 d-flex justify-content-between align-items-center">
+                    <h5 class="fw-bold mb-0">
+                        <i class="bi bi-collection-play text-primary me-2"></i> Mes cours enseignés & Suivi
+                    </h5>
+                    <span class="badge bg-primary-subtle text-primary rounded-pill">@teacherCourses.Count cours</span>
+                </div>
+                <div class="card-body">
+                    @if (isLoading)
+                    {
+                        <div class="text-center py-5">
+                            <div class="spinner-border text-primary" role="status"></div>
+                            <p class="mt-2 text-muted small">Chargement des cours...</p>
+                        </div>
+                    }
+                    else if (teacherCourses.Any())
+                    {
+                        <div class="accordion" id="accordionCourses">
+                            @foreach (var (cours, index) in teacherCourses.Select((c, i) => (c, i)))
+                            {
+                                var collapseId = $"collapse_{cours.Id}";
+                                var headingId = $"heading_{cours.Id}";
+
+                                <div class="accordion-item border mb-3 rounded-3 overflow-hidden shadow-sm">
+                                    <h2 class="accordion-header" id="@headingId">
+                                        <button class="accordion-button @(index > 0 ? "collapsed" : "") bg-light py-3" type="button" data-bs-toggle="collapse" data-bs-target="#@collapseId" aria-expanded="@(index == 0 ? "true" : "false")" aria-controls="@collapseId">
+                                            <div class="d-flex align-items-center gap-3 w-100 pe-3">
+                                                <img src="@(string.IsNullOrWhiteSpace(cours.MiniatureUrl) ? "images/course-default.svg" : cours.MiniatureUrl)"
+                                                     class="rounded border"
+                                                     style="width: 80px; height: 45px; object-fit: cover;"
+                                                     alt="Miniature" />
+                                                <div class="flex-grow-1 text-truncate">
+                                                    <h6 class="fw-bold mb-0 text-dark">@cours.Titre</h6>
+                                                    <small class="text-muted">
+                                                        @(cours.Chapitres?.Count ?? 0) chapitre(s) • <span class="text-success fw-semibold">@(cours.Inscriptions?.Count ?? 0) inscrit(s)</span>
+                                                    </small>
+                                                </div>
+                                            </div>
+                                        </button>
+                                    </h2>
+                                    <div id="@collapseId" class="accordion-collapse collapse @(index == 0 ? "show" : "")" aria-labelledby="@headingId" data-bs-parent="#accordionCourses">
+                                        <div class="accordion-body bg-white">
+                                            <!-- Actions rapides du cours -->
+                                            <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom">
+                                                <span class="small text-muted">Type: <strong>@cours.Type</strong></span>
+                                                <a href="@($"/cours/{cours.Id}/chapitres")" class="btn btn-outline-primary btn-sm fw-semibold">
+                                                    <i class="bi bi-journal-text me-1"></i> Gérer les chapitres
+                                                </a>
+                                            </div>
+
+                                            <!-- Tableau de suivi des étudiants et certificats -->
+                                            <h6 class="fw-bold text-secondary small mb-2"><i class="bi bi-award me-1"></i> Suivi des étudiants & Éligibilité au certificat</h6>
+
+                                            @if (cours.Inscriptions != null && cours.Inscriptions.Any())
+                                            {
+                                                <div class="table-responsive">
+                                                    <table class="table table-sm table-hover align-middle small mb-0">
+                                                        <thead class="table-light">
+                                                            <tr>
+                                                                <th>Étudiant</th>
+                                                                <th>Progression</th>
+                                                                <th>Note Finale</th>
+                                                                <th class="text-center">Certificat</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            @foreach (var insc in cours.Inscriptions)
+                                                            {
+                                                                <tr>
+                                                                    <td>
+                                                                        <div class="fw-semibold">@(insc.Apprenant?.NomComplet ?? "Inconnu")</div>
+                                                                        <div class="text-muted" style="font-size: 0.75rem;">@insc.Apprenant?.Email</div>
+                                                                    </td>
+                                                                    <td>
+                                                                        <div class="d-flex align-items-center gap-2">
+                                                                            <div class="progress flex-grow-1" style="height: 6px;">
+                                                                                <div class="progress-bar @(insc.Progression == 100 ? "bg-success" : "bg-primary")" style="width: @(insc.Progression)%"></div>
+                                                                            </div>
+                                                                            <span class="text-muted" style="font-size: 0.75rem;">@insc.Progression%</span>
+                                                                        </div>
+                                                                    </td>
+                                                                    <td>
+                                                                        @if (insc.NoteFinale.HasValue)
+                                                                        {
+                                                                            <span class="badge bg-light text-dark border">@insc.NoteFinale.Value.ToString("0.##") / 20</span>
+                                                                        }
+                                                                        else
+                                                                        {
+                                                                            <span class="text-muted">—</span>
+                                                                        }
+                                                                    </td>
+                                                                    <td class="text-center">
+                                                                        @if (insc.EstEligibleCertificat)
+                                                                        {
+                                                                            <button @onclick="() => ToggleEligibilite(insc)" class="btn btn-success btn-sm py-0 px-2" title="Cliquer pour révoquer">
+                                                                                <i class="bi bi-check-circle-fill me-1"></i> Éligible
+                                                                            </button>
+                                                                        }
+                                                                        else
+                                                                        {
+                                                                            <button @onclick="() => ToggleEligibilite(insc)" class="btn btn-outline-secondary btn-sm py-0 px-2" title="Cliquer pour valider l'éligibilité" @attributes='(insc.Progression < 100 ? new Dictionary<string, object> { { "disabled", "disabled" } } : null)'>
+                                                                                <i class="bi bi-clock me-1"></i> Valider
+                                                                            </button>
+                                                                        }
+                                                                    </td>
+                                                                </tr>
+                                                            }
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            }
+                                            else
+                                            {
+                                                <p class="text-muted small fst-italic mb-0">Aucun étudiant inscrit à ce cours pour le moment.</p>
+                                            }
+                                        </div>
+                                    </div>
+                                </div>
                             }
                         </div>
-                    </div>
+                    }
+                    else
+                    {
+                        <div class="text-center py-5">
+                            <i class="bi bi-folder-x fs-1 text-muted"></i>
+                            <p class="text-muted mt-2">Aucun cours trouvé. Remplis le formulaire pour ajouter ton premier cours.</p>
+                        </div>
+                    }
                 </div>
             </div>
         </div>
@@ -117,31 +286,179 @@
 @code {
     private List<ModelCours> teacherCourses = new();
     private ModelCours newCourse = new() { Type = "Vidéo", MiniatureUrl = "images/course-default.svg" };
-    private string formMessage = string.Empty;
 
-    protected override void OnInitialized()
+    private string formMessage = string.Empty;
+    private string previewUrl = string.Empty;
+    private IBrowserFile? selectedFile;
+
+    private bool isSuccess = false;
+    private bool isLoading = true;
+    private bool isUploading = false;
+    private bool isSubmitting = false;
+
+    protected override async Task OnInitializedAsync()
     {
-        teacherCourses = _context.Cours
-            .Include(c => c.Enseignant)
-            .ToList();
+        await LoadCoursesAsync();
+    }
+
+    private async Task LoadCoursesAsync()
+    {
+        isLoading = true;
+        using var context = await DbFactory.CreateDbContextAsync();
+        var currentUser = CurrentUserService.CurrentUser;
+
+        if (currentUser != null)
+        {
+            teacherCourses = await context.Cours
+                .Include(c => c.Enseignant)
+                .Include(c => c.Chapitres)
+                .Include(c => c.Inscriptions)
+                    .ThenInclude(i => i.Apprenant)
+                .Where(c => c.EnseignantId == currentUser.Id)
+                .OrderByDescending(c => c.Id)
+                .ToListAsync();
+        }
+        else
+        {
+            teacherCourses = await context.Cours
+                .Include(c => c.Enseignant)
+                .Include(c => c.Chapitres)
+                .Include(c => c.Inscriptions)
+                    .ThenInclude(i => i.Apprenant)
+                .OrderByDescending(c => c.Id)
+                .ToListAsync();
+        }
+
+        isLoading = false;
+    }
+
+    private async Task ToggleEligibilite(ModelInscription inscription)
+    {
+        using var context = await DbFactory.CreateDbContextAsync();
+        var dbInsc = await context.Inscriptions.FindAsync(inscription.Id);
+
+        if (dbInsc != null)
+        {
+            // Inverser le statut
+            dbInsc.EstEligibleCertificat = !dbInsc.EstEligibleCertificat;
+
+            // Si on le rend éligible, on génère automatiquement un code de vérification unique
+            if (dbInsc.EstEligibleCertificat)
+            {
+                dbInsc.CodeVerificationCertificat = $"CRMS-UOB-{DateTime.UtcNow.Year}-{Guid.NewGuid().ToString()[..6].ToUpper()}";
+            }
+            else
+            {
+                dbInsc.CodeVerificationCertificat = null;
+                dbInsc.CertificatDelivre = false;
+                dbInsc.DateDelivranceCertificat = null;
+            }
+
+            await context.SaveChangesAsync();
+
+            // Mettre à jour l'état local pour rafraîchir l'interface instantanément
+            inscription.EstEligibleCertificat = dbInsc.EstEligibleCertificat;
+            inscription.CodeVerificationCertificat = dbInsc.CodeVerificationCertificat;
+            inscription.CertificatDelivre = dbInsc.CertificatDelivre;
+            inscription.DateDelivranceCertificat = dbInsc.DateDelivranceCertificat;
+        }
+    }
+
+    private async Task HandleFileSelected(InputFileChangeEventArgs e)
+    {
+        selectedFile = e.File;
+        if (selectedFile == null) return;
+
+        isUploading = true;
+        formMessage = string.Empty;
+
+        try
+        {
+            long maxFileSize = 10 * 1024 * 1024;
+            using var stream = selectedFile.OpenReadStream(maxAllowedSize: maxFileSize);
+
+            using var image = await Image.LoadAsync(stream);
+            image.Mutate(x => x.Resize(new ResizeOptions
+            {
+                Size = new Size(1280, 720),
+                Mode = ResizeMode.Crop
+            }));
+
+            var targetFolder = Path.Combine(Env.WebRootPath, "images", "courses");
+            if (!Directory.Exists(targetFolder))
+            {
+                Directory.CreateDirectory(targetFolder);
+            }
+
+            var fileName = $"course_{Guid.NewGuid():N}.jpeg";
+            var filePath = Path.Combine(targetFolder, fileName);
+
+            await image.SaveAsJpegAsync(filePath);
+
+            newCourse.MiniatureUrl = $"images/courses/{fileName}";
+            previewUrl = newCourse.MiniatureUrl;
+        }
+        catch (Exception ex)
+        {
+            formMessage = $"Erreur lors du traitement de l'image : {ex.Message}";
+            isSuccess = false;
+        }
+        finally
+        {
+            isUploading = false;
+        }
     }
 
     private async Task HandleCreateCourse()
     {
         if (CurrentUserService.CurrentUser is not Enseignant enseignant)
         {
-            formMessage = "Vous devez être connecté en tant qu'enseignant pour créer un cours.";
+            formMessage = "Seul un enseignant authentifié peut créer un cours.";
+            isSuccess = false;
             return;
         }
 
-        newCourse.EnseignantId = enseignant.Id;
-        newCourse.Enseignant = enseignant;
+        isSubmitting = true;
+        formMessage = string.Empty;
 
-        _context.Cours.Add(newCourse);
-        await _context.SaveChangesAsync();
+        try
+        {
+            using var context = await DbFactory.CreateDbContextAsync();
+            newCourse.EnseignantId = enseignant.Id;
 
-        formMessage = "Cours créé avec succès !";
-        teacherCourses.Add(newCourse);
-        newCourse = new ModelCours { Type = "Vidéo", MiniatureUrl = "images/course-default.svg" };
+            // 1. Ajouter et sauvegarder le cours pour obtenir son ID généré
+            context.Cours.Add(newCourse);
+            await context.SaveChangesAsync();
+
+            // 2. Créer automatiquement le forum associé au nouveau cours
+            var nouveauForum = new Forum
+            {
+                Nom = $"Forum du cours : {newCourse.Titre}",
+                Description = $"Espace de discussion et d'échange pour le cours {newCourse.Titre}.",
+                CoursId = newCourse.Id
+            };
+
+            context.Forums.Add(nouveauForum);
+            await context.SaveChangesAsync();
+
+            isSuccess = true;
+            formMessage = "Cours et forum associés créés avec succès !";
+
+            // Réinitialisation du formulaire
+            newCourse = new ModelCours { Type = "Vidéo", MiniatureUrl = "images/course-default.svg" };
+            previewUrl = string.Empty;
+            selectedFile = null;
+
+            await LoadCoursesAsync();
+        }
+        catch (Exception ex)
+        {
+            isSuccess = false;
+            formMessage = $"Erreur lors de la sauvegarde : {ex.Message}";
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
     }
 }

@@ -1,0 +1,740 @@
+@page "/cours/{CoursId:int}/chapitres"
+@rendermode InteractiveServer
+
+@using Microsoft.EntityFrameworkCore
+@using PlateE_learning.Models
+@using PlateE_learning.Data
+@using System.IO
+
+@using CoursModel = PlateE_learning.Models.Cours
+@using ChapitreModel = PlateE_learning.Models.Chapitre
+
+@inject IDbContextFactory<AppDbContext> DbFactory
+@inject NavigationManager Navigation
+@inject CurrentUserService CurrentUserService
+@inject IWebHostEnvironment Env
+@implements IDisposable
+
+<PageTitle>Gestion des chapitres - CRMS-UOB</PageTitle>
+
+<div class="container py-4">
+    @if (IsLoading)
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary" role="status"></div>
+            <p class="text-muted mt-2">Chargement de l'espace de gestion...</p>
+        </div>
+    }
+    else if (!EstAutorise || CoursConcerne == null)
+    {
+        <div class="alert alert-danger rounded-4 shadow-sm p-4 text-center">
+            <h4 class="alert-heading fw-bold"><i class="bi bi-shield-lock-fill me-2"></i>Accès non autorisé</h4>
+            <p class="mb-3">Vous devez être connecté en tant qu'enseignant propriétaire de ce cours pour accéder à cette page.</p>
+            <a href="/cours" class="btn btn-primary rounded-pill px-4">
+                <i class="bi bi-arrow-left me-2"></i>Retour au catalogue
+            </a>
+        </div>
+    }
+    else
+    {
+        <!-- EN-TÊTE -->
+        <div class="d-flex justify-content-between align-items-center mb-4 pb-3 border-bottom">
+            <div>
+                <a href="@($"/cours/{CoursId}")" class="text-decoration-none text-muted small fw-bold">
+                    <i class="bi bi-arrow-left me-1"></i>Retour au cours
+                </a>
+                <h2 class="fw-bold text-dark mt-1 mb-0">Gestion des chapitres : @CoursConcerne.Titre</h2>
+            </div>
+            <button class="btn btn-primary rounded-pill px-4 shadow-sm" @onclick="OuvrirModalCreation">
+                <i class="bi bi-plus-circle-fill me-1"></i>Nouveau chapitre
+            </button>
+        </div>
+
+        @if (!string.IsNullOrEmpty(MessageErreur))
+        {
+            <div class="alert alert-danger alert-dismissible fade show rounded-3 shadow-sm" role="alert">
+                <i class="bi bi-exclamation-triangle-fill me-2"></i>@MessageErreur
+                <button type="button" class="btn-close" @onclick="() => MessageErreur = null"></button>
+            </div>
+        }
+
+        <!-- LISTE DES CHAPITRES -->
+        <div class="card border-0 shadow-sm rounded-4 overflow-hidden mb-4">
+            <div class="card-body p-0">
+                @if (!ListeChapitres.Any())
+                {
+                    <div class="text-center py-5 text-muted">
+                        <i class="bi bi-journal-x display-4 text-secondary mb-2 d-block"></i>
+                        <p class="mb-0 fs-6">Aucun chapitre n'a encore été créé pour ce cours.</p>
+                    </div>
+                }
+                else
+                {
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="bg-light">
+                                <tr>
+                                    <th style="width: 80px;" class="ps-4">Ordre</th>
+                                    <th>Titre</th>
+                                    <th>Type</th>
+                                    <th>Évaluation (QCM)</th>
+                                    <th style="width: 220px;" class="text-end pe-4">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var chap in ListeChapitres)
+                                {
+                                    <tr>
+                                        <td class="ps-4">
+                                            <span class="badge bg-secondary rounded-pill">#@chap.Ordre</span>
+                                        </td>
+                                        <td class="fw-semibold text-dark">@chap.Titre</td>
+                                        <td>
+                                            @if (chap is ChapitreVideo)
+                                            {
+                                                <span class="badge bg-danger-subtle text-danger rounded-pill px-3 py-2 border border-danger-subtle">
+                                                    <i class="bi bi-play-btn-fill me-1"></i> Vidéo
+                                                </span>
+                                            }
+                                            else if (chap is ChapitreTexte)
+                                            {
+                                                <span class="badge bg-primary-subtle text-primary rounded-pill px-3 py-2 border border-primary-subtle">
+                                                    <i class="bi bi-file-text-fill me-1"></i> Texte
+                                                </span>
+                                            }
+                                        </td>
+                                        <td>
+                                            @if (chap.Evaluation != null)
+                                            {
+                                                <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-3 py-2">
+                                                    <i class="bi bi-check-circle-fill me-1"></i> Évaluation (@chap.Evaluation.Questions.Count qst)
+                                                </span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge bg-warning-subtle text-warning border border-warning-subtle rounded-pill px-3 py-2">
+                                                    <i class="bi bi-exclamation-circle-fill me-1"></i> Aucune évaluation
+                                                </span>
+                                            }
+                                        </td>
+                                        <td class="text-end pe-4">
+                                            <button class="btn btn-sm btn-outline-success me-1 rounded-circle" title="@(chap.Evaluation != null ? "Modifier l'évaluation" : "Ajouter une évaluation")" @onclick="() => OuvrirModalEvaluation(chap)">
+                                                <i class="bi bi-patch-question-fill"></i>
+                                            </button>
+                                            <button class="btn btn-sm btn-outline-primary me-1 rounded-circle" title="Modifier" @onclick="() => OuvrirModalEdition(chap)">
+                                                <i class="bi bi-pencil"></i>
+                                            </button>
+                                            <button class="btn btn-sm btn-outline-danger rounded-circle" title="Supprimer" @onclick="() => SupprimerChapitre(chap)">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+<!-- MODAL CRÉATION / ÉDITION CHAPITRE -->
+@if (AfficherModal)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content rounded-4 border-0 shadow-lg">
+                <div class="modal-header border-bottom pb-3">
+                    <h5 class="fw-bold text-dark modal-title d-flex align-items-center gap-2">
+                        <i class="bi @(EstEnEdition ? "bi-pencil-square" : "bi-plus-circle-fill") text-primary"></i>
+                        @(EstEnEdition ? "Modifier le chapitre" : "Nouveau chapitre")
+                    </h5>
+                    <button type="button" class="btn-close" @onclick="FermerModal"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <div class="row g-3">
+                        <div class="col-md-8">
+                            <label class="form-label fw-semibold small">Titre du chapitre</label>
+                            <input type="text" class="form-control rounded-3" @bind="FormTitre" placeholder="Ex: Introduction aux concepts de base" />
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold small">Ordre d'affichage</label>
+                            <input type="number" class="form-control rounded-3" @bind="FormOrdre" min="1" />
+                        </div>
+
+                        @if (!EstEnEdition)
+                        {
+                            <div class="col-12">
+                                <label class="form-label fw-semibold small">Type de chapitre</label>
+                                <select class="form-select rounded-3" @bind="FormType">
+                                    <option value="Texte">Chapitre Textuel</option>
+                                    <option value="Video">Chapitre Vidéo</option>
+                                </select>
+                            </div>
+                        }
+
+                        @if (FormType == "Texte")
+                        {
+                            <div class="col-12">
+                                <label class="form-label fw-semibold small">Contenu du chapitre (HTML / Texte)</label>
+                                <textarea class="form-control rounded-3" rows="8" @bind="FormContenuHtml" placeholder="Rédigez ici le cours..."></textarea>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="col-12">
+                                <label class="form-label fw-semibold small">Fichier Vidéo du Chapitre</label>
+
+                                <div class="card border-dashed p-4 text-center bg-light rounded-4">
+                                    <i class="bi bi-cloud-arrow-up display-5 text-primary mb-2"></i>
+                                    <p class="small text-muted mb-2">Sélectionnez une vidéo sur votre ordinateur (MP4, WEBM, MKV)</p>
+                                    <div class="d-flex justify-content-center">
+                                        <InputFile OnChange="HandleVideoUpload" accept="video/mp4,video/webm,video/ogg,video/quicktime,video/x-matroska" class="form-control w-75 rounded-3" />
+                                    </div>
+                                </div>
+
+                                @if (IsUploadingVideo)
+                                {
+                                    <div class="mt-3 p-3 bg-primary-subtle text-primary rounded-3 d-flex align-items-center gap-2">
+                                        <div class="spinner-border spinner-border-sm" role="status"></div>
+                                        <span>Téléversement de la vidéo en cours, veuillez patienter...</span>
+                                    </div>
+                                }
+                                else if (!string.IsNullOrEmpty(FormCheminVideo))
+                                {
+                                    <div class="mt-3 p-3 bg-success-subtle text-success border border-success-subtle rounded-3">
+                                        <div class="fw-semibold mb-2 d-flex align-items-center gap-2">
+                                            <i class="bi bi-check-circle-fill"></i> Vidéo prête : <code>@FormCheminVideo</code>
+                                        </div>
+                                        <video controls style="max-width: 100%; max-height: 220px;" class="rounded-3 shadow-sm w-100">
+                                            <source src="@FormCheminVideo" />
+                                            Votre navigateur ne supporte pas la lecture de vidéo.
+                                        </video>
+                                    </div>
+                                }
+                            </div>
+                        }
+                    </div>
+                </div>
+                <div class="modal-footer border-top pt-3">
+                    <button type="button" class="btn btn-light rounded-pill px-4" @onclick="FermerModal">Annuler</button>
+                    <button type="button" class="btn btn-primary rounded-pill px-4 d-flex align-items-center gap-2" @onclick="SauvegarderChapitre" disabled="@IsUploadingVideo">
+                        <i class="bi bi-check-lg"></i> Enregistrer
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- MODAL GESTION ÉVALUATION & QUESTIONS (1-à-N) -->
+@if (AfficherModalEvaluation && ChapitreConcerneEval != null)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content rounded-4 border-0 shadow-lg">
+                <div class="modal-header border-bottom pb-3">
+                    <h5 class="fw-bold text-dark modal-title d-flex align-items-center gap-2">
+                        <i class="bi bi-patch-question-fill text-success"></i>
+                        Évaluation : @ChapitreConcerneEval.Titre
+                    </h5>
+                    <button type="button" class="btn-close" @onclick="FermerModalEvaluation"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <EditForm Model="FormEval" OnValidSubmit="SauvegarderEvaluation">
+                        <DataAnnotationsValidator />
+
+                        <div class="row g-3 mb-4 pb-3 border-bottom">
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold small">Titre de l'évaluation</label>
+                                <InputText class="form-control rounded-3" @bind-Value="FormEval.Titre" />
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label fw-semibold small">Type</label>
+                                <InputSelect class="form-select rounded-3" @bind-Value="FormEval.Type">
+                                    <option value="QCM">QCM</option>
+                                    <option value="Vrai/Faux">Vrai / Faux</option>
+                                    <option value="Sondage">Sondage</option>
+                                </InputSelect>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label fw-semibold small">Note Max</label>
+                                <InputNumber class="form-control rounded-3" @bind-Value="FormEval.NoteMax" min="1" />
+                            </div>
+                        </div>
+
+                        <!-- SECTION DES QUESTIONS -->
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h6 class="fw-bold text-dark mb-0">
+                                <i class="bi bi-list-check me-2 text-primary"></i>Questions (@FormEval.Questions.Count)
+                            </h6>
+                            <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-3" @onclick="AjouterNouvelleQuestion">
+                                <i class="bi bi-plus-lg me-1"></i>Ajouter une question
+                            </button>
+                        </div>
+
+                        @if (!FormEval.Questions.Any())
+                        {
+                            <div class="alert alert-warning rounded-3 small">
+                                <i class="bi bi-exclamation-circle me-1"></i> Aucune question ajoutée. Cliquez sur "Ajouter une question" pour commencer.
+                            </div>
+                        }
+
+                        @for (int i = 0; i < FormEval.Questions.Count; i++)
+                        {
+                            var index = i;
+                            var qst = FormEval.Questions[index];
+
+                            <div class="card border rounded-3 p-3 mb-3 bg-light shadow-sm">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <span class="fw-bold text-primary">Question #@(index + 1)</span>
+                                    <button type="button" class="btn btn-sm btn-outline-danger border-0" @onclick="() => SupprimerQuestion(index)">
+                                        <i class="bi bi-trash"></i> Supprimer
+                                    </button>
+                                </div>
+
+                                <div class="row g-2">
+                                    <div class="col-md-10">
+                                        <label class="form-label small fw-semibold">Énoncé</label>
+                                        <InputText class="form-control rounded-3" @bind-Value="qst.Enonce" placeholder="Ex: Quelle est la syntaxe correcte... ?" />
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label class="form-label small fw-semibold">Points</label>
+                                        <InputNumber class="form-control rounded-3" @bind-Value="qst.Points" min="1" />
+                                    </div>
+
+                                    <div class="col-md-6">
+                                        <label class="form-label small text-muted">Option A</label>
+                                        <InputText class="form-control form-control-sm rounded-3" @bind-Value="qst.OptionA" />
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label small text-muted">Option B</label>
+                                        <InputText class="form-control form-control-sm rounded-3" @bind-Value="qst.OptionB" />
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label small text-muted">Option C</label>
+                                        <InputText class="form-control form-control-sm rounded-3" @bind-Value="qst.OptionC" />
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label small text-muted">Option D</label>
+                                        <InputText class="form-control form-control-sm rounded-3" @bind-Value="qst.OptionD" />
+                                    </div>
+
+                                    <div class="col-md-6 mt-2">
+                                        <label class="form-label small fw-semibold text-success">Bonne Réponse</label>
+                                        <InputSelect class="form-select form-select-sm rounded-3" @bind-Value="qst.ReponseCorrecte">
+                                            <option value="A">Option A</option>
+                                            <option value="B">Option B</option>
+                                            <option value="C">Option C</option>
+                                            <option value="D">Option D</option>
+                                        </InputSelect>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+
+                        <div class="modal-footer border-top mt-4 pt-3 px-0 pb-0">
+                            <button type="button" class="btn btn-light rounded-pill px-4" @onclick="FermerModalEvaluation">Annuler</button>
+                            <button type="submit" class="btn btn-success rounded-pill px-4">
+                                <i class="bi bi-check-lg me-1"></i> Enregistrer l'évaluation
+                            </button>
+                        </div>
+                    </EditForm>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public int CoursId { get; set; }
+
+    private CoursModel? CoursConcerne;
+    private List<ChapitreModel> ListeChapitres = new();
+    private bool IsLoading = true;
+    private bool EstAutorise = false;
+    private string? MessageErreur;
+
+    // Modals
+    private bool AfficherModal = false;
+    private bool EstEnEdition = false;
+    private int? ChapitreIdEnEdition;
+
+    // Formulaire Chapitre
+    private string FormTitre = string.Empty;
+    private int FormOrdre = 1;
+    private string FormType = "Texte";
+    private string FormContenuHtml = string.Empty;
+    private string FormCheminVideo = string.Empty;
+
+    // Upload
+    private bool IsUploadingVideo = false;
+
+    // Modal Évaluation
+    private bool AfficherModalEvaluation = false;
+    private ChapitreModel? ChapitreConcerneEval;
+    private Evaluation FormEval = new Evaluation();
+
+    protected override async Task OnInitializedAsync()
+    {
+        CurrentUserService.OnChange += OnStateChange;
+        await VerifierSecuriteEtCharger();
+    }
+
+    private void OnStateChange() => InvokeAsync(StateHasChanged);
+
+    public void Dispose()
+    {
+        CurrentUserService.OnChange -= OnStateChange;
+    }
+
+    private async Task VerifierSecuriteEtCharger()
+    {
+        IsLoading = true;
+        try
+        {
+            if (!CurrentUserService.IsAuthenticated || CurrentUserService.CurrentUser == null)
+            {
+                EstAutorise = false;
+                return;
+            }
+
+            using var context = await DbFactory.CreateDbContextAsync();
+
+            CoursConcerne = await context.Cours
+                .AsNoTracking()
+                .FirstOrDefaultAsync(c => c.Id == CoursId);
+
+            if (CoursConcerne == null)
+            {
+                EstAutorise = false;
+                return;
+            }
+
+            int currentUserId = CurrentUserService.CurrentUser.Id;
+            EstAutorise = CurrentUserService.Role == "Administrateur" ||
+                         (CurrentUserService.Role == "Enseignant" && CoursConcerne.EnseignantId == currentUserId);
+
+            if (EstAutorise)
+            {
+                await RechargerChapitres(context);
+            }
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+    private async Task RechargerChapitres(AppDbContext context)
+    {
+        ListeChapitres = await context.Chapitres
+            .Include(c => c.Evaluation)
+                .ThenInclude(e => e!.Questions)
+            .Where(c => c.CoursId == CoursId)
+            .OrderBy(c => c.Ordre)
+            .AsNoTracking()
+            .ToListAsync();
+    }
+
+    private void OuvrirModalCreation()
+    {
+        EstEnEdition = false;
+        ChapitreIdEnEdition = null;
+        FormTitre = string.Empty;
+        FormOrdre = ListeChapitres.Any() ? ListeChapitres.Max(c => c.Ordre) + 1 : 1;
+        FormType = "Texte";
+        FormContenuHtml = string.Empty;
+        FormCheminVideo = string.Empty;
+        MessageErreur = null;
+        AfficherModal = true;
+    }
+
+    private void OuvrirModalEdition(ChapitreModel chapitre)
+    {
+        EstEnEdition = true;
+        ChapitreIdEnEdition = chapitre.Id;
+        FormTitre = chapitre.Titre;
+        FormOrdre = chapitre.Ordre;
+        MessageErreur = null;
+
+        if (chapitre is ChapitreTexte texte)
+        {
+            FormType = "Texte";
+            FormContenuHtml = texte.ContenuHtml ?? string.Empty;
+            FormCheminVideo = string.Empty;
+        }
+        else if (chapitre is ChapitreVideo video)
+        {
+            FormType = "Video";
+            FormCheminVideo = video.CheminFichierVideo ?? string.Empty;
+            FormContenuHtml = string.Empty;
+        }
+
+        AfficherModal = true;
+    }
+
+    private void FermerModal() => AfficherModal = false;
+
+    private void OuvrirModalEvaluation(ChapitreModel chapitre)
+    {
+        ChapitreConcerneEval = chapitre;
+
+        if (chapitre.Evaluation != null)
+        {
+            FormEval = new Evaluation
+            {
+                Id = chapitre.Evaluation.Id,
+                Titre = chapitre.Evaluation.Titre,
+                Type = chapitre.Evaluation.Type,
+                NoteMax = chapitre.Evaluation.NoteMax,
+                ChapitreId = chapitre.Id,
+                Questions = chapitre.Evaluation.Questions.Select(q => new Question
+                {
+                    Id = q.Id,
+                    Enonce = q.Enonce,
+                    OptionA = q.OptionA,
+                    OptionB = q.OptionB,
+                    OptionC = q.OptionC,
+                    OptionD = q.OptionD,
+                    ReponseCorrecte = q.ReponseCorrecte,
+                    Points = q.Points,
+                    EvaluationId = q.EvaluationId
+                }).ToList()
+            };
+        }
+        else
+        {
+            FormEval = new Evaluation
+            {
+                ChapitreId = chapitre.Id,
+                Titre = $"Évaluation - {chapitre.Titre}",
+                Type = "QCM",
+                NoteMax = 20,
+                Questions = new List<Question>()
+            };
+            AjouterNouvelleQuestion();
+        }
+
+        AfficherModalEvaluation = true;
+    }
+
+    private void AjouterNouvelleQuestion()
+    {
+        FormEval.Questions.Add(new Question
+        {
+            Enonce = string.Empty,
+            OptionA = string.Empty,
+            OptionB = string.Empty,
+            OptionC = string.Empty,
+            OptionD = string.Empty,
+            ReponseCorrecte = "A",
+            Points = 1
+        });
+    }
+
+    private void SupprimerQuestion(int index)
+    {
+        if (index >= 0 && index < FormEval.Questions.Count)
+        {
+            FormEval.Questions.RemoveAt(index);
+        }
+    }
+
+    private void FermerModalEvaluation()
+    {
+        AfficherModalEvaluation = false;
+        ChapitreConcerneEval = null;
+    }
+
+    private async Task SauvegarderEvaluation()
+    {
+        if (ChapitreConcerneEval == null) return;
+
+        using var context = await DbFactory.CreateDbContextAsync();
+
+        if (FormEval.Id == 0)
+        {
+            context.Evaluations.Add(FormEval);
+        }
+        else
+        {
+            var existingEval = await context.Evaluations
+                .Include(e => e.Questions)
+                .FirstOrDefaultAsync(e => e.Id == FormEval.Id);
+
+            if (existingEval != null)
+            {
+                existingEval.Titre = FormEval.Titre;
+                existingEval.Type = FormEval.Type;
+                existingEval.NoteMax = FormEval.NoteMax;
+
+                // Nettoyage et synchronisation des questions
+                context.Questions.RemoveRange(existingEval.Questions);
+                existingEval.Questions = FormEval.Questions.Select(q => new Question
+                {
+                    Enonce = q.Enonce,
+                    OptionA = q.OptionA,
+                    OptionB = q.OptionB,
+                    OptionC = q.OptionC,
+                    OptionD = q.OptionD,
+                    ReponseCorrecte = q.ReponseCorrecte,
+                    Points = q.Points
+                }).ToList();
+            }
+        }
+
+        await context.SaveChangesAsync();
+        await RechargerChapitres(context);
+        FermerModalEvaluation();
+    }
+
+    private async Task HandleVideoUpload(InputFileChangeEventArgs e)
+    {
+        var file = e.File;
+        if (file == null) return;
+
+        IsUploadingVideo = true;
+        MessageErreur = null;
+        StateHasChanged();
+
+        try
+        {
+            long maxAllowedSize = 500 * 1024 * 1024; // 500 Mo
+            var targetFolder = Path.Combine(Env.WebRootPath, "videos");
+
+            if (!Directory.Exists(targetFolder))
+            {
+                Directory.CreateDirectory(targetFolder);
+            }
+
+            var extension = Path.GetExtension(file.Name);
+            if (string.IsNullOrEmpty(extension)) extension = ".mp4";
+
+            var fileName = $"video_{Guid.NewGuid():N}{extension}";
+            var filePath = Path.Combine(targetFolder, fileName);
+
+            await using (var stream = file.OpenReadStream(maxAllowedSize: maxAllowedSize))
+            await using (var fileStream = new FileStream(filePath, FileMode.Create))
+            {
+                await stream.CopyToAsync(fileStream);
+            }
+
+            FormCheminVideo = $"videos/{fileName}";
+        }
+        catch (Exception ex)
+        {
+            MessageErreur = $"Erreur lors de l'upload de la vidéo : {ex.Message}";
+        }
+        finally
+        {
+            IsUploadingVideo = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task SauvegarderChapitre()
+    {
+        if (string.IsNullOrWhiteSpace(FormTitre))
+        {
+            MessageErreur = "Veuillez renseigner un titre pour le chapitre.";
+            return;
+        }
+
+        if (FormType == "Video" && string.IsNullOrWhiteSpace(FormCheminVideo))
+        {
+            MessageErreur = "Veuillez téléverser un fichier vidéo avant d'enregistrer.";
+            return;
+        }
+
+        using var context = await DbFactory.CreateDbContextAsync();
+
+        if (EstEnEdition && ChapitreIdEnEdition.HasValue)
+        {
+            var chapToUpdate = await context.Chapitres.FindAsync(ChapitreIdEnEdition.Value);
+            if (chapToUpdate != null)
+            {
+                chapToUpdate.Titre = FormTitre;
+                chapToUpdate.Ordre = FormOrdre;
+
+                if (chapToUpdate is ChapitreTexte texte)
+                {
+                    texte.ContenuHtml = FormContenuHtml;
+                }
+                else if (chapToUpdate is ChapitreVideo video)
+                {
+                    if (!string.IsNullOrEmpty(video.CheminFichierVideo) && video.CheminFichierVideo != FormCheminVideo)
+                    {
+                        SupprimerFichierPhysique(video.CheminFichierVideo);
+                    }
+                    video.CheminFichierVideo = FormCheminVideo;
+                }
+            }
+        }
+        else
+        {
+            ChapitreModel nouveauChapitre;
+
+            if (FormType == "Video")
+            {
+                nouveauChapitre = new ChapitreVideo
+                {
+                    Titre = FormTitre,
+                    Ordre = FormOrdre,
+                    CoursId = CoursId,
+                    CheminFichierVideo = FormCheminVideo
+                };
+            }
+            else
+            {
+                nouveauChapitre = new ChapitreTexte
+                {
+                    Titre = FormTitre,
+                    Ordre = FormOrdre,
+                    CoursId = CoursId,
+                    ContenuHtml = FormContenuHtml
+                };
+            }
+
+            context.Chapitres.Add(nouveauChapitre);
+        }
+
+        await context.SaveChangesAsync();
+        await RechargerChapitres(context);
+        FermerModal();
+    }
+
+    private async Task SupprimerChapitre(ChapitreModel chapitre)
+    {
+        using var context = await DbFactory.CreateDbContextAsync();
+        var chap = await context.Chapitres.FindAsync(chapitre.Id);
+        if (chap != null)
+        {
+            if (chap is ChapitreVideo video && !string.IsNullOrEmpty(video.CheminFichierVideo))
+            {
+                SupprimerFichierPhysique(video.CheminFichierVideo);
+            }
+
+            context.Chapitres.Remove(chap);
+            await context.SaveChangesAsync();
+            await RechargerChapitres(context);
+        }
+    }
+
+    private void SupprimerFichierPhysique(string relativePath)
+    {
+        try
+        {
+            var fullPath = Path.Combine(Env.WebRootPath, relativePath.Replace('/', Path.DirectorySeparatorChar));
+            if (File.Exists(fullPath))
+            {
+                File.Delete(fullPath);
+            }
+        }
+        catch
+        {
+            // Ignorer si le fichier est absent
+        }
+    }
+}

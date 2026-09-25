@@ -1,196 +1,307 @@
-@page "/cours/{id:int}"
-@using PlateE_learning.Models
-@using CoursModel = PlateE_learning.Models.Cours
+@page "/cours/{Id:int}"
+@rendermode InteractiveServer
 @using Microsoft.EntityFrameworkCore
-@inject PlateE_learning.Data.AppDbContext _context
-@inject PlateE_learning.Data.CurrentUserService CurrentUserService
+@using PlateE_learning.Models
+@using PlateE_learning.Data
+@inject IDbContextFactory<AppDbContext> DbFactory
 @inject NavigationManager Navigation
+@inject CurrentUserService CurrentUserService
+@implements IDisposable
 
-@code {
-    [Parameter]
-    public int id { get; set; }
+<PageTitle>@(CoursData?.Titre ?? "Détail du cours") - CRMS-UOB</PageTitle>
 
-    private CoursModel? cours;
-    private bool isEnrolled;
-    private string message = string.Empty;
-
-    protected override async Task OnInitializedAsync()
-    {
-        cours = await _context.Cours
-            .Include(c => c.Chapitres)
-            .Include(c => c.Apprenants)
-            .FirstOrDefaultAsync(c => c.Id == id);
-
-        await UpdateEnrollmentStateAsync();
-    }
-
-    private async Task UpdateEnrollmentStateAsync()
-    {
-        isEnrolled = false;
-        if (CurrentUserService.IsAuthenticated && CurrentUserService.Role == "Apprenant")
-        {
-            var userId = CurrentUserService.CurrentUser?.Id;
-            if (userId == null) return;
-
-            var apprenant = await _context.Utilisateurs.OfType<Apprenant>()
-                .Include(a => a.CoursSuivis)
-                .FirstOrDefaultAsync(a => a.Id == userId.Value);
-
-            if (apprenant != null && apprenant.CoursSuivis.Any(c => c.Id == id))
-                isEnrolled = true;
-        }
-    }
-
-    private async Task EnrollHere()
-    {
-        message = string.Empty;
-        if (!CurrentUserService.IsAuthenticated || CurrentUserService.Role != "Apprenant")
-        {
-            message = "Connecte-toi en tant qu'apprenant pour t'inscrire.";
-            return;
-        }
-
-        var userId = CurrentUserService.CurrentUser?.Id;
-        if (userId == null || cours == null)
-        {
-            message = "Impossible d'effectuer l'opération.";
-            return;
-        }
-
-        var apprenant = await _context.Utilisateurs.OfType<Apprenant>()
-            .Include(a => a.CoursSuivis)
-            .FirstOrDefaultAsync(a => a.Id == userId.Value);
-
-        if (apprenant == null)
-        {
-            message = "Impossible d'effectuer l'opération.";
-            return;
-        }
-
-        if (!apprenant.CoursSuivis.Any(c => c.Id == id))
-        {
-            apprenant.CoursSuivis.Add(cours);
-            await _context.SaveChangesAsync();
-            isEnrolled = true;
-            message = "Inscription réussie.";
-        }
-
-        // redirect to refresh and show chapters
-        Navigation.NavigateTo($"/cours/{id}");
-    }
-
-    private async Task UnenrollHere()
-    {
-        message = string.Empty;
-        if (!CurrentUserService.IsAuthenticated || CurrentUserService.Role != "Apprenant")
-        {
-            message = "Connecte-toi en tant qu'apprenant pour te désinscrire.";
-            return;
-        }
-
-        var userId = CurrentUserService.CurrentUser?.Id;
-        if (userId == null || cours == null)
-        {
-            message = "Impossible d'effectuer l'opération.";
-            return;
-        }
-
-        var apprenant = await _context.Utilisateurs.OfType<Apprenant>()
-            .Include(a => a.CoursSuivis)
-            .FirstOrDefaultAsync(a => a.Id == userId.Value);
-
-        if (apprenant == null)
-        {
-            message = "Impossible d'effectuer l'opération.";
-            return;
-        }
-
-        var found = apprenant.CoursSuivis.FirstOrDefault(c => c.Id == id);
-        if (found != null)
-        {
-            apprenant.CoursSuivis.Remove(found);
-            await _context.SaveChangesAsync();
-            isEnrolled = false;
-            message = "Désinscription réussie.";
-        }
-    }
-
-    private void StartCourse()
-    {
-        var first = cours?.Chapitres.OrderBy(c => c.Id).FirstOrDefault();
-        if (first != null)
-            Navigation.NavigateTo($"/cours/{id}/chapitre/{first.Id}");
-    }
-
-    private void OpenChapter(int chapitreId)
-    {
-        Navigation.NavigateTo($"/cours/{id}/chapitre/{chapitreId}");
-    }
+@if (IsLoading)
+{
+    <div class="text-center py-5 my-5">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Chargement...</span>
+        </div>
+        <p class="text-muted mt-2">Chargement des détails du cours...</p>
+    </div>
 }
+else if (CoursData == null)
+{
+    <div class="container py-5 text-center">
+        <div class="alert alert-warning rounded-4 shadow-sm p-4">
+            <h4>⚠️ Cours introuvable</h4>
+            <p>Le cours demandé n'existe pas ou a été retiré.</p>
+            <a href="/cours" class="btn btn-primary rounded-pill mt-2">Retour au catalogue</a>
+        </div>
+    </div>
+}
+else
+{
+    <!-- HERO SECTION DU COURS -->
+    <section class="bg-dark text-white py-5 position-relative hero-course">
+        <div class="container">
+            <div class="row align-items-center g-4">
+                <div class="col-lg-8">
+                    <span class="badge bg-warning px-3 py-2 rounded-pill mb-3">
+                        @(CoursData.Type == "Vidéo" ? "Formation Vidéo" : " Formation Texte")
+                    </span>
+                    <h1 class="fw-bold display-5 mb-3">@CoursData.Titre</h1>
+                    <p class="lead text-light-50 mb-4 opacity-75">@CoursData.Description</p>
 
-<div class="container py-4">
-    @if (cours == null)
-    {
-        <div class="alert alert-warning">Cours introuvable.</div>
-    }
-    else
-    {
-        <div class="course-detail-header mb-4">
-            <img src="@cours.MiniatureUrl" alt="Miniature du cours @cours.Titre" class="img-fluid rounded-4 mb-4 course-detail-image" />
-            <div class="d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between gap-3">
-                <div>
-                    <h2>@cours.Titre</h2>
-                    <p class="text-muted mb-2">@cours.Description</p>
-                    <span class="badge bg-primary">@cours.Type</span>
+                    <!-- Infos Enseignant -->
+                    <div class="d-flex align-items-center gap-3">
+                        @if (!string.IsNullOrEmpty(CoursData.Enseignant?.PhotoUrl))
+                        {
+                            <img src="@CoursData.Enseignant.PhotoUrl"
+                                 alt="@CoursData.Enseignant.NomComplet"
+                                 class="rounded-circle teacher-avatar-lg" />
+                        }
+                        else
+                        {
+                            <div class="teacher-avatar-placeholder-lg rounded-circle bg-primary text-white d-flex align-items-center justify-content-center fw-bold">
+                                @(string.IsNullOrEmpty(CoursData.Enseignant?.NomComplet) ? "U" : CoursData.Enseignant.NomComplet.Substring(0, 1))
+                            </div>
+                        }
+                        <div>
+                            <small class="text-white-50 d-block line-height-1">Enseignant</small>
+                            <span class="fw-bold fs-6 text-white">@(CoursData.Enseignant?.NomComplet ?? "Enseignant UOB")</span>
+                        </div>
+                    </div>
                 </div>
-                <div class="d-flex align-items-center gap-3 instructor-card p-3 rounded-4 shadow-sm bg-white">
-                    <img src="@(cours.Enseignant?.PhotoUrl ?? "images/avatar-default.svg")" alt="Photo de @cours.Enseignant?.NomComplet" class="teacher-avatar" />
-                    <div>
-                        <div class="fw-semibold">@cours.Enseignant?.NomComplet ?? "Enseignant"</div>
-                        <div class="text-muted small">Professeur</div>
+
+                <div class="col-lg-4 text-lg-end">
+                    <div class="card border-0 rounded-4 shadow-lg overflow-hidden bg-white text-dark p-3">
+                        <img src="@(string.IsNullOrEmpty(CoursData.MiniatureUrl) ? "images/course-default.svg" : CoursData.MiniatureUrl)"
+                             class="rounded-3 img-fluid mb-3 course-detail-img" alt="@CoursData.Titre" />
+
+                        @if (InscriptionUtilisateur != null)
+                        {
+                            <a href="/cours/@CoursData.Id/apprendre" class="btn btn-success btn-lg w-100 rounded-pill fw-bold shadow-sm">
+                                Continuer le cours
+                            </a>
+                        }
+                        else
+                        {
+                            <button class="btn btn-primary btn-lg w-100 rounded-pill fw-bold shadow-sm" @onclick="SInscrire">
+                                S'inscrire au cours
+                            </button>
+                        }
                     </div>
                 </div>
             </div>
         </div>
+    </section>
 
-        @if (!string.IsNullOrEmpty(message))
-        {
-            <div class="alert alert-info">@message</div>
-        }
+    <!-- CONTENU PRINCIPAL -->
+    <section class="py-5 bg-light min-vh-100">
+        <div class="container">
+            <div class="row g-4">
 
-        @if (isEnrolled)
-        {
-            <button class="btn btn-outline-danger" @onclick="UnenrollHere">Se désinscrire</button>
-            <button class="btn btn-success ms-2" @onclick="StartCourse">Commencer le cours</button>
-            <a class="btn btn-outline-primary ms-2" href="/certificat">Télécharger le certificat</a>
-        }
-        else
-        {
-            <button class="btn btn-primary me-2" @onclick="EnrollHere">S'inscrire</button>
-        }
-        <button class="btn btn-link" @onclick='() => Navigation.NavigateTo("/cours")'>Retour à la liste</button>
+                <!-- COLONNE GAUCHE : PROGRESSION & TABLE DES MATIÈRES -->
+                <div class="col-lg-8">
 
-        <div class="mt-4">
-            <h4>Chapitres</h4>
-            @if (cours.Chapitres != null && cours.Chapitres.Any())
-            {
-                <ol>
-                    @foreach (var ch in cours.Chapitres.OrderBy(ch => ch.Id))
+                    <!-- BLOC PROGRESSION (Si utilisateur connecté et inscrit) -->
+                    @if (InscriptionUtilisateur != null)
                     {
-                        <li>
-                            <strong>@ch.Titre</strong>
-                            <div class="text-muted">@((ch.Contenu ?? string.Empty).Length > 200 ? (ch.Contenu ?? string.Empty).Substring(0,200) + "..." : ch.Contenu)</div>
-                            <div class="mt-1">
-                                <a href="#" @onclick="() => OpenChapter(ch.Id)">Voir le chapitre</a>
+                        <div class="card border-0 rounded-4 shadow-sm p-4 mb-4 bg-white">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <h5 class="fw-bold m-0 text-dark">📊 Votre progression</h5>
+                                <span class="badge bg-primary-subtle text-primary fw-bold">@InscriptionUtilisateur.Progression% complété</span>
                             </div>
-                        </li>
+                            <div class="progress mb-2" style="height: 10px;">
+                                <div class="progress-bar bg-primary rounded-pill" role="progressbar"
+                                     style="width: @InscriptionUtilisateur.Progression%;"
+                                     aria-valuenow="@InscriptionUtilisateur.Progression" aria-valuemin="0" aria-valuemax="100"></div>
+                            </div>
+                            <small class="text-muted">
+                                Statut : @(InscriptionUtilisateur.EstTermine ? "✅ Cours terminé" : "🔵 En cours d'apprentissage")
+                            </small>
+                        </div>
                     }
-                </ol>
-            }
-            else
-            {
-                <div class="text-muted">Aucun chapitre pour ce cours.</div>
-            }
+
+                    <!-- TABLE DES MATIÈRES (CHAPITRES) -->
+                    <div class="card border-0 rounded-4 shadow-sm p-4 bg-white">
+                        <h4 class="fw-bold text-dark mb-4">Table des matières (@CoursData.Chapitres.Count chapitres)</h4>
+
+                        @if (!CoursData.Chapitres.Any())
+                        {
+                            <p class="text-muted mb-0">Aucun chapitre n'est encore disponible pour ce cours.</p>
+                        }
+                        else
+                        {
+                            <div class="accordion accordion-flush" id="accordionChapitres">
+                                @{
+                                    var chapitresTries = CoursData.Chapitres.OrderBy(c => c.Ordre).ToList();
+                                    int totalChapitres = chapitresTries.Count;
+
+                                    // Calcul du dernier chapitre accessible en fonction du % de progression dans Inscription
+                                    int maxChapitreInscrit = InscriptionUtilisateur != null && totalChapitres > 0
+                                        ? Math.Max(1, (int)Math.Ceiling((double)InscriptionUtilisateur.Progression / 100 * totalChapitres))
+                                        : 0;
+                                }
+
+                                @foreach (var chapitre in chapitresTries)
+                                {
+                                    bool estDebloque = InscriptionUtilisateur != null && (chapitre.Ordre <= maxChapitreInscrit || chapitre.Ordre == 1);
+
+                                    <div class="accordion-item border rounded-3 mb-3 overflow-hidden shadow-sm">
+                                        <h2 class="accordion-header" id="heading-@chapitre.Id">
+                                            <button class="accordion-button collapsed fw-bold text-dark d-flex justify-content-between align-items-center"
+                                                    type="button"
+                                                    data-bs-toggle="collapse"
+                                                    data-bs-target="#collapse-@chapitre.Id"
+                                                    aria-expanded="false"
+                                                    aria-controls="collapse-@chapitre.Id">
+                                                <div class="d-flex align-items-center gap-3">
+                                                    <span>@(CoursData.Type == "Vidéo" ? "🎥" : "📄")</span>
+                                                    <span>Chapitre @chapitre.Ordre : @chapitre.Titre</span>
+                                                </div>
+                                            </button>
+                                        </h2>
+                                        <div id="collapse-@chapitre.Id" class="accordion-collapse collapse" aria-labelledby="heading-@chapitre.Id" data-bs-parent="#accordionChapitres">
+                                            <div class="accordion-body bg-light text-muted small">
+                                                <p class="mb-3">Accédez au contenu du chapitre pour poursuivre votre apprentissage.</p>
+
+                                                @if (InscriptionUtilisateur != null)
+                                                {
+                                                    @if (estDebloque)
+                                                    {
+                                                        <a href="/cours/@CoursData.Id/chapitre/@chapitre.Id" class="btn btn-sm btn-primary rounded-pill fw-bold px-3">
+                                                            ▶️ Rejoindre le chapitre
+                                                        </a>
+                                                    }
+                                                    else
+                                                    {
+                                                        <button class="btn btn-sm btn-secondary rounded-pill fw-bold px-3" disabled>
+                                                            🔒 Verrouillé (Terminez le chapitre précédent)
+                                                        </button>
+                                                    }
+                                                }
+                                                else
+                                                {
+                                                    <span class="text-muted fst-italic">🔒 Connectez-vous et inscrivez-vous pour débloquer ce chapitre.</span>
+                                                }
+                                            </div>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                <!-- COLONNE DROITE : DETAILS & STATS -->
+                <div class="col-lg-4">
+                    <div class="card border-0 rounded-4 shadow-sm p-4 bg-white sticky-top" style="top: 20px;">
+                        <h5 class="fw-bold text-dark mb-3">Informations sur la formation</h5>
+
+                        <ul class="list-group list-group-flush mb-3">
+                            <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+                                <span class="text-muted">📚 Chapitres</span>
+                                <span class="fw-bold">@CoursData.Chapitres.Count</span>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+                                <span class="text-muted">⏱️ Durée estimée</span>
+                                <span class="fw-bold">@(CoursData.Chapitres.Count * 20) min</span>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+                                <span class="text-muted">Format</span>
+                                <span class="fw-bold">@CoursData.Type</span>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+                                <span class="text-muted">🎓 Certification</span>
+                                <span class="badge bg-success-subtle text-success fw-bold">
+                                    @(CoursData.Certificats != null && CoursData.Certificats.Any() ? "Inclus" : "Disponible")
+                                </span>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+
+            </div>
         </div>
+    </section>
+}
+
+@code {
+    [Parameter] public int Id { get; set; }
+
+    private PlateE_learning.Models.Cours? CoursData;
+    private PlateE_learning.Models.Inscription? InscriptionUtilisateur;
+    private bool IsLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        CurrentUserService.OnChange += StateHasChanged;
+        await ChargerDonneesAsync();
     }
-</div>
+
+    public void Dispose()
+    {
+        CurrentUserService.OnChange -= StateHasChanged;
+    }
+
+    private async Task ChargerDonneesAsync()
+    {
+        IsLoading = true;
+        try
+        {
+            using var context = DbFactory.CreateDbContext();
+
+            // Charger le cours et ses chapitres
+            CoursData = await context.Cours
+                .Include(c => c.Enseignant)
+                .Include(c => c.Chapitres)
+                .Include(c => c.Certificats)
+                .FirstOrDefaultAsync(c => c.Id == Id);
+
+            // Si l'utilisateur est connecté via CurrentUserService
+            if (CurrentUserService.IsAuthenticated && CurrentUserService.CurrentUser != null)
+            {
+                int currentUserId = CurrentUserService.CurrentUser.Id;
+
+                InscriptionUtilisateur = await context.Inscriptions
+                    .FirstOrDefaultAsync(i => i.CoursId == Id && i.ApprenantId == currentUserId);
+            }
+        }
+        catch (Exception)
+        {
+            CoursData = null;
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+    private async Task SInscrire()
+    {
+        if (CoursData == null) return;
+
+        // 1. Si non connecté, redirection vers /login
+        if (!CurrentUserService.IsAuthenticated || CurrentUserService.CurrentUser == null)
+        {
+            Navigation.NavigateTo("/login");
+            return;
+        }
+
+        int currentUserId = CurrentUserService.CurrentUser.Id;
+
+        using var context = DbFactory.CreateDbContext();
+
+        // 2. Vérifier s'il n'est pas déjà inscrit
+        bool dejaInscrit = await context.Inscriptions
+            .AnyAsync(i => i.CoursId == Id && i.ApprenantId == currentUserId);
+
+        if (!dejaInscrit)
+        {
+            var nouvelleInscription = new PlateE_learning.Models.Inscription
+            {
+                CoursId = Id,
+                ApprenantId = currentUserId,
+                DateInscription = DateTime.UtcNow,
+                Progression = 0,
+                EstTermine = false
+            };
+
+            context.Inscriptions.Add(nouvelleInscription);
+            await context.SaveChangesAsync();
+
+            InscriptionUtilisateur = nouvelleInscription;
+        }
+    }
+}

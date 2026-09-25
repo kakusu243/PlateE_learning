@@ -1,0 +1,397 @@
+﻿@page "/forums"
+@using Microsoft.EntityFrameworkCore
+@inject IDbContextFactory<AppDbContext> DbFactory
+@inject CurrentUserService CurrentUserService
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+
+<PageTitle>Forums - Espace de Discussion</PageTitle>
+
+<div class="container-fluid vh-100 p-0 overflow-hidden bg-dark">
+    <div class="row g-0 h-100">
+
+        <!-- COLONNE DE GAUCHE : Liste des forums (Style WhatsApp) -->
+        <div class="@(forumSelectionne == null ? "col-12 col-md-4 col-lg-3 d-flex" : "col-12 col-md-4 col-lg-3 d-none d-md-flex") flex-column h-100 bg-white border-end">
+            <!-- En-tête de la liste -->
+            <div class="p-3 bg-light border-bottom d-flex align-items-center">
+                <h4 class="mb-0 text-dark fw-bold">Forums de discussion</h4>
+            </div>
+
+            <!-- Barre de recherche des forums -->
+            <div class="p-2 bg-white border-bottom">
+                <div class="input-group input-group-sm">
+                    <span class="input-group-text bg-light border-0 text-muted"><i class="bi bi-search"></i></span>
+                    <input type="text" class="form-control bg-light border-0 shadow-none"
+                           placeholder="Rechercher un forum..."
+                           @bind="rechercheForum"
+                           @bind:event="oninput" />
+                    @if (!string.IsNullOrEmpty(rechercheForum))
+                    {
+                        <button class="btn btn-light text-muted border-0" type="button" @onclick="() => rechercheForum = string.Empty">
+                            <i class="bi bi-x"></i>
+                        </button>
+                    }
+                </div>
+            </div>
+
+            <!-- Liste des conversations / cours -->
+            <div class="flex-grow-1 overflow-auto" style="background-color: #f8f9fa;">
+                @if (isLoadingList)
+                {
+                    <div class="text-center p-4">
+                        <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+                        <span class="text-muted ms-2">Chargement des forums...</span>
+                    </div>
+                }
+                else if (ForumsFiltres == null || !ForumsFiltres.Any())
+                {
+                    <div class="text-center p-4 text-muted">
+                        <p class="mb-0">Aucun forum trouvé.</p>
+                    </div>
+                }
+                else
+                {
+                    @foreach (var forum in ForumsFiltres)
+                    {
+                        var isSelected = forumSelectionne?.Id == forum.Id;
+                        <div @onclick="() => SelectionnerForum(forum)"
+                             class="d-flex align-items-center p-3 border-bottom cursor-pointer transition-hover @(isSelected ? "bg-light border-start border-4 border-warning" : "bg-white")"
+                             style="cursor: pointer;">
+
+                            <!-- Miniature du cours -->
+                            <div class="position-relative me-3">
+                                <img src="@(string.IsNullOrEmpty(forum.Cours?.MiniatureUrl) ? "images/course-default.svg" : forum.Cours.MiniatureUrl)"
+                                     alt="Miniature" class="rounded-circle object-fit-cover shadow-sm" style="width: 50px; height: 50px;" />
+                            </div>
+
+                            <!-- Nom et description rapide -->
+                            <div class="flex-grow-1 overflow-hidden">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <h6 class="mb-0 text-truncate fw-bold text-dark">@forum.Nom</h6>
+                                    @if (nonLusCounts.ContainsKey(forum.Id) && nonLusCounts[forum.Id] > 0)
+                                    {
+                                        <span class="badge bg-success rounded-pill">@nonLusCounts[forum.Id]</span>
+                                    }
+                                </div>
+                                <p class="mb-0 text-muted small text-truncate">@forum.Description</p>
+                            </div>
+                        </div>
+                    }
+                }
+            </div>
+        </div>
+
+        <!-- COLONNE DE DROITE : Fil de discussion type Groupe WhatsApp -->
+        <div class="@(forumSelectionne != null ? "col-12 col-md-8 col-lg-9 d-flex" : "col-12 col-md-8 col-lg-9 d-none d-md-flex") flex-column h-100 bg-light">
+            @if (forumSelectionne == null)
+            {
+                <!-- État vide : Aucun forum sélectionné -->
+                <div class="d-flex flex-column align-items-center justify-content-center h-100 text-muted bg-white">
+                    <div class="text-center p-5">
+                        <i class="bi bi-chat-dots display-3 text-secondary mb-3"></i>
+                        <h3>Vos discussions de cours</h3>
+                        <p class="text-muted">Sélectionnez un forum dans la liste à gauche pour commencer à échanger avec votre enseignant et vos camarades.</p>
+                    </div>
+                </div>
+            }
+            else
+            {
+                <!-- En-tête de la discussion active -->
+                <div class="p-3 bg-white border-bottom d-flex align-items-center shadow-sm">
+                    <!-- Bouton retour mobile -->
+                    <button class="btn btn-light d-md-none me-2 border-0" @onclick="FermerForumMobile">
+                        <i class="bi bi-arrow-left fs-5"></i>
+                    </button>
+
+                    <img src="@(string.IsNullOrEmpty(forumSelectionne.Cours?.MiniatureUrl) ? "images/course-default.svg" : forumSelectionne.Cours.MiniatureUrl)"
+                         alt="Avatar" class="rounded-circle object-fit-cover me-3" style="width: 45px; height: 45px;" />
+                    <div class="flex-grow-1">
+                        <h5 class="mb-0 fw-bold text-dark">@forumSelectionne.Nom</h5>
+                        <small class="text-muted">@forumSelectionne.Cours?.Titre</small>
+                    </div>
+                </div>
+
+                <!-- Corps des messages (Flux continu) -->
+                <div class="flex-grow-1 p-4 overflow-auto d-flex flex-column" id="chat-messages-container" style="background-color: #efeae2; max-height: calc(100vh - 140px);">
+                    @if (forumSelectionne.Messages == null || !forumSelectionne.Messages.Any())
+                    {
+                        <div class="text-center my-auto">
+                            <span class="badge bg-secondary p-2 shadow-sm text-white">C'est le début de ce forum. Envoyez le premier message !</span>
+                        </div>
+                    }
+                    else
+                    {
+                        @foreach (var msg in forumSelectionne.Messages.OrderBy(m => m.DateCreation))
+                        {
+                            bool estMonMessage = msg.AuteurId == currentUserId;
+
+                            <div class="d-flex mb-3 @(estMonMessage ? "justify-content-end" : "justify-content-start")">
+                                <div class="d-flex max-w-75 @(estMonMessage ? "flex-row-reverse" : "flex-row")">
+
+                                    <!-- Photo de profil de l'auteur (Cliquable pour agrandir) -->
+                                    <img src="@(string.IsNullOrEmpty(msg.Auteur?.PhotoUrl) ? "images/avatar-default.svg" : msg.Auteur.PhotoUrl)"
+                                         alt="Avatar" class="rounded-circle object-fit-cover shadow-sm mx-2 cursor-pointer"
+                                         style="width: 35px; height: 35px; min-width: 35px; cursor: pointer;"
+                                         @onclick="() => AfficherImageEnGrand(msg.Auteur?.PhotoUrl)" />
+
+                                    <!-- Bulle de message -->
+                                    <div class="bullmsg card shadow-sm border-0 px-3 py-2 @(estMonMessage ? "bg-dark text-white" : "bg-white text-dark") position-relative"
+                                         style="border-radius: 10px; max-width: 300px; word-break: break-word;">
+
+                                        <!-- Nom de l'expéditeur -->
+                                        @if (!estMonMessage)
+                                        {
+                                            <div class="fw-bold text-primary small mb-1">@(msg.Auteur?.NomComplet ?? "Utilisateur")</div>
+                                        }
+
+                                        <!-- Citation si le message répond à un autre -->
+                                        @if (!string.IsNullOrEmpty(msg.MessageReponduContenu))
+                                        {
+                                            <div class="p-2 mb-2 rounded bg-opacity-25 @(estMonMessage ? "bg-secondary text-white" : "bg-light text-dark") border-start border-4 border-warning small">
+                                                
+                                                <span class="fw-bold d-block" style="font-size: 0.75rem;">@msg.MessageReponduAuteur</span>
+                                                <span class="text-truncate d-block">@msg.MessageReponduContenu</span>
+                                            </div>
+                                        }
+
+                                        <!-- Contenu -->
+                                        <p class="mb-1" style="white-space: pre-wrap;">@msg.Contenu</p>
+
+                                        <!-- Bouton Répondre & Date -->
+                                        <div class="d-flex justify-content-between align-items-center mt-1" style="font-size: 0.7rem; opacity: 0.8;">
+                                            <button class="btn btn-link p-0 text-decoration-none @(estMonMessage ? "text-light" : "text-muted")"
+                                                    style="font-size: 0.7rem;" @onclick="() => PreparerReponse(msg)">
+                                                <i class="bi bi-reply"></i> Répondre
+                                            </button>
+                                            <span class="ms-2">@msg.DateCreation.ToString("dd/MM/yyyy HH:mm")</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    }
+                </div>
+
+                <!-- Aperçu du message en cours de réponse -->
+                @if (messageRepondu != null)
+                {
+                    <div class="bg-white px-3 py-2 border-top d-flex justify-content-between align-items-center">
+                        <div class="small border-start border-4 border-warning ps-2 text-muted text-truncate">
+                            <span class="fw-bold text-dark">Réponse à @messageRepondu.Auteur?.NomComplet :</span>
+                            <span class="text-truncate d-block">@messageRepondu.Contenu</span>
+                        </div>
+                        <button class="btn btn-sm btn-light text-danger border-0" @onclick="AnnulerReponse">
+                            <i class="bi bi-x-lg"></i>
+                        </button>
+                    </div>
+                }
+
+                <!-- Barre de saisie en bas (Style WhatsApp) -->
+                <div class="p-3 bg-white border-top">
+                    <div class="input-group">
+                        <textarea class="form-control border-0 bg-light shadow-none"
+                                  placeholder="Entrez un message..."
+                                  @bind="nouveauMessageContenu"
+                                  @bind:event="oninput"
+                                  rows="1"
+                                  style="resize: none; border-radius: 20px !important; padding: 10px 15px;"></textarea>
+
+                        <button class="btn btn-warning ms-2 rounded-circle d-flex align-items-center justify-content-center shadow-sm"
+                                type="button"
+                                @onclick="EnvoyerMessage"
+                                disabled="@isSending"
+                                style="width: 45px; height: 45px; min-width: 45px;">
+                            @if (isSending)
+                            {
+                                <span class="spinner-border spinner-border-sm text-white"></span>
+                            }
+                            else
+                            {
+                                <i class="bi bi-send-fill text-white"></i>
+                            }
+                        </button>
+                    </div>
+                </div>
+            }
+        </div>
+
+    </div>
+</div>
+
+<!-- Modal pour afficher la photo de profil en grand -->
+@if (!string.IsNullOrEmpty(imageUrlEnGrand))
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.8);" @onclick="FermerImageEnGrand">
+        <div class="modal-dialog modal-dialog-centered modal-sm">
+            <div class="modal-content bg-transparent border-0 text-center">
+                <div class="modal-body position-relative p-0">
+                    <button type="button" class="btn-close btn-close-white position-absolute top-0 end-0 m-2" @onclick="FermerImageEnGrand"></button>
+                    <img src="@imageUrlEnGrand" class="img-fluid rounded-circle shadow-lg" style="width: 250px; height: 250px; object-fit: cover;" alt="Profil en grand" />
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private bool isLoadingList = true;
+    private bool isSending = false;
+    private int currentUserId;
+
+    private List<Forum> forumsDisponibles = new();
+    private Forum? forumSelectionne;
+    private string nouveauMessageContenu = string.Empty;
+    private string rechercheForum = string.Empty;
+
+    private MessageForum? messageRepondu;
+    private string? imageUrlEnGrand;
+    private Dictionary<int, int> nonLusCounts = new();
+
+    private IEnumerable<Forum> ForumsFiltres => string.IsNullOrWhiteSpace(rechercheForum)
+        ? forumsDisponibles
+        : forumsDisponibles.Where(f => f.Nom.Contains(rechercheForum, StringComparison.OrdinalIgnoreCase) ||
+                                     (f.Description != null && f.Description.Contains(rechercheForum, StringComparison.OrdinalIgnoreCase)));
+
+    protected override async Task OnInitializedAsync()
+    {
+        var user = CurrentUserService.CurrentUser;
+        if (user == null)
+        {
+            Navigation.NavigateTo("/login");
+            return;
+        }
+        currentUserId = user.Id;
+
+        await ChargerForumsDisponiblesAsync(user);
+    }
+
+    private async Task ChargerForumsDisponiblesAsync(Utilisateur user)
+    {
+        isLoadingList = true;
+        using var context = await DbFactory.CreateDbContextAsync();
+
+        if (user.Role == "Enseignant")
+        {
+            forumsDisponibles = await context.Forums
+                .Include(f => f.Cours)
+                .Where(f => f.Cours != null && f.Cours.EnseignantId == user.Id)
+                .ToListAsync();
+        }
+        else
+        {
+            var coursIdsInscrits = await context.Inscriptions
+                .Where(i => i.ApprenantId == user.Id)
+                .Select(i => i.CoursId)
+                .ToListAsync();
+
+            forumsDisponibles = await context.Forums
+                .Include(f => f.Cours)
+                .Where(f => coursIdsInscrits.Contains(f.CoursId))
+                .ToListAsync();
+        }
+
+        foreach (var forum in forumsDisponibles)
+        {
+            var count = await context.MessagesForum
+                .Where(m => m.ForumId == forum.Id && m.AuteurId != currentUserId)
+                .CountAsync();
+            nonLusCounts[forum.Id] = count > 5 ? 2 : count;
+        }
+
+        isLoadingList = false;
+    }
+
+    private async Task SelectionnerForum(Forum forum)
+    {
+        using var context = await DbFactory.CreateDbContextAsync();
+
+        forumSelectionne = await context.Forums
+            .Include(f => f.Cours)
+            .Include(f => f.Messages)
+                .ThenInclude(m => m.Auteur)
+            .FirstOrDefaultAsync(f => f.Id == forum.Id);
+
+        nouveauMessageContenu = string.Empty;
+        messageRepondu = null;
+
+        if (nonLusCounts.ContainsKey(forum.Id))
+            nonLusCounts[forum.Id] = 0;
+
+        StateHasChanged();
+        await Task.Delay(50);
+        await ScrollerVersLeBas();
+    }
+
+    private void FermerForumMobile()
+    {
+        forumSelectionne = null;
+    }
+
+    private void PreparerReponse(MessageForum msg)
+    {
+        messageRepondu = msg;
+    }
+
+    private void AnnulerReponse()
+    {
+        messageRepondu = null;
+    }
+
+    private void AfficherImageEnGrand(string? url)
+    {
+        if (!string.IsNullOrEmpty(url))
+        {
+            imageUrlEnGrand = url;
+        }
+    }
+
+    private void FermerImageEnGrand()
+    {
+        imageUrlEnGrand = null;
+    }
+
+    private async Task EnvoyerMessage()
+    {
+        if (string.IsNullOrWhiteSpace(nouveauMessageContenu) || forumSelectionne == null) return;
+
+        isSending = true;
+        using var context = await DbFactory.CreateDbContextAsync();
+
+        var message = new MessageForum
+        {
+            ForumId = forumSelectionne.Id,
+            AuteurId = currentUserId,
+            Contenu = nouveauMessageContenu.Trim(),
+            DateCreation = DateTime.UtcNow,
+            MessageReponduContenu = messageRepondu?.Contenu,
+            MessageReponduAuteur = messageRepondu?.Auteur?.NomComplet
+        };
+
+        context.MessagesForum.Add(message);
+        await context.SaveChangesAsync();
+
+        var utilisateurCourant = await context.Utilisateurs.FindAsync(currentUserId);
+        message.Auteur = utilisateurCourant;
+
+        forumSelectionne.Messages.Add(message);
+        nouveauMessageContenu = string.Empty;
+        messageRepondu = null;
+
+        isSending = false;
+
+        await Task.Delay(20);
+        await ScrollerVersLeBas();
+    }
+
+    private async Task ScrollerVersLeBas()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("eval", "var el = document.getElementById('chat-messages-container'); if(el) { el.scrollTop = el.scrollHeight; }");
+        }
+        catch
+        {
+            // Ignorer si le DOM n'est pas prêt
+        }
+    }
+}

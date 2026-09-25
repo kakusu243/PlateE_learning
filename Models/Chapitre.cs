@@ -1,14 +1,26 @@
 namespace PlateE_learning.Models
 {
-    public class Chapitre
+    public abstract class Chapitre
     {
         public int Id { get; set; }
         public string Titre { get; set; } = string.Empty;
-        public string Contenu { get; set; } = string.Empty; // Gardera le type TEXT ou LONGTEXT
         public int Ordre { get; set; }
 
-        // 🔗 Clé étrangère et propriété de navigation vers le Cours
         public int CoursId { get; set; }
         public Cours? Cours { get; set; }
+
+        // 🔗 Navigation vers l'évaluation associée
+        public Evaluation? Evaluation { get; set; }
+    }
+
+    public class ChapitreTexte : Chapitre
+    {
+        public string ContenuHtml { get; set; } = string.Empty;
+    }
+
+    public class ChapitreVideo : Chapitre
+    {
+        public string CheminFichierVideo { get; set; } = string.Empty;
+        public int DureeEnSecondes { get; set; } = 0;
     }
 }

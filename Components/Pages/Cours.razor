@@ -1,229 +1,242 @@
 @page "/cours"
-@using PlateE_learning.Models
-@using ModelCours = PlateE_learning.Models.Cours
+@rendermode InteractiveServer
 @using Microsoft.EntityFrameworkCore
-@inject PlateE_learning.Data.AppDbContext _context
-@inject PlateE_learning.Data.CurrentUserService CurrentUserService
-@inject NavigationManager Navigation
+@using PlateE_learning.Models
+@using PlateE_learning.Data
+@inject IDbContextFactory<AppDbContext> DbFactory
 
-<div class="container py-5">
-    @if (!string.IsNullOrEmpty(actionMessage))
-    {
-        <div class="alert alert-success">@actionMessage</div>
-    }
-    <div class="d-flex flex-column flex-md-row align-items-start justify-content-between gap-3 mb-4">
-        <div class="flex-fill">
-            <div class="input-group shadow-sm rounded overflow-hidden">
-                <input @bind="searchTerm" @bind:event="oninput" class="form-control border-end-0" placeholder="Rechercher un cours..." />
-                <button class="btn btn-outline-secondary" type="button" @onclick="() => searchTerm = string.Empty">Effacer</button>
+<PageTitle>Catalogue des Cours - CRMS-UOB</PageTitle>
+
+<!-- EN-TÊTE PAGE DE CATALOGUE -->
+<section class="catalog-header bg-white border-bottom py-4 py-lg-5">
+    <div class="container">
+        <div class="row align-items-center g-4">
+            <div class="col-lg-6">
+                
+                <h1 class="fw-bold text-dark display-6 mb-2">Catalogue des Cours</h1>
+                <p class="text-muted mb-0 fs-6">
+                    Explorez nos programmes de formation médicale continue et développez vos compétences au quotidien.
+                </p>
             </div>
-            <div class="d-flex flex-wrap gap-2 mt-3">
-                <button class="@GetFilterButtonClass(null)" @onclick="@(() => SetFilter(null))">Tous</button>
-                <button class="@GetFilterButtonClass(VideoType)" @onclick="@(() => SetFilter(VideoType))">Vidéos</button>
-                <button class="@GetFilterButtonClass(TextType)" @onclick="@(() => SetFilter(TextType))">Textes</button>
+
+            <!-- Barre de Recherche -->
+            <div class="col-lg-6">
+                <div class="search-box position-relative ms-lg-auto" style="max-width: 480px;">
+                    <input type="text"
+                           class="form-control form-control-lg ps-5 rounded-pill border-2 shadow-sm"
+                           placeholder="Rechercher par cours, sujet ou enseignant..."
+                           @bind="SearchQuery"
+                           @bind:event="oninput" />
+                    <span class="position-absolute top-50 start-0 translate-middle-y ms-3 text-muted fs-5">
+                        🔍
+                    </span>
+                </div>
             </div>
         </div>
-        <div class="text-md-end">
-            <p class="mb-1 text-muted">@filteredCourses.Count cours trouvés</p>
-            <small class="text-muted">Filtre activé : @(selectedType ?? "Tous")</small>
+
+        <!-- Filtres par Type de Cours -->
+        <div class="d-flex align-items-center gap-2 overflow-x-auto pt-4 mt-2 no-scrollbar">
+            <button class="btn btn-sm @(SelectedType == "Tous" ? "btn-warning fw-bold" : "btn-outline-secondary") rounded-pill px-3 py-2 text-nowrap"
+                    @onclick='() => FilterByType("Tous")'>
+                Tous les cours (@FilteredCoursCount)
+            </button>
+            <button class="btn btn-sm @(SelectedType == "Vidéo" ? "btn-warning fw-bold" : "btn-outline-secondary") rounded-pill px-3 py-2 text-nowrap"
+                    @onclick='() => FilterByType("Vidéo")'>
+                Formations Vidéo
+            </button>
+            <button class="btn btn-sm @(SelectedType == "Texte" ? "btn-warning fw-bold" : "btn-outline-secondary") rounded-pill px-3 py-2 text-nowrap"
+                    @onclick='() => FilterByType("Texte")'>
+                Formations Texte
+            </button>
         </div>
     </div>
+</section>
 
-    <div class="row g-4">
-        @if (filteredCourses.Any())
+<!-- GRILLE DES COURS -->
+<section class="py-5 bg-light min-vh-100">
+    <div class="container">
+        @if (ListCours == null)
         {
-            @foreach (var cours in filteredCourses)
-            {
-                <div class="col-md-6 col-xl-4">
-                    <div class="course-card shadow-sm rounded overflow-hidden h-100 bg-white">
-                        <img src="@cours.MiniatureUrl" class="img-fluid w-100" alt="Miniature du cours @cours.Titre" />
-                        <div class="card-body d-flex flex-column">
-                            <h5 class="card-title mb-2"><a href="@($"/cours/{cours.Id}")" class="text-dark text-decoration-none">@cours.Titre</a></h5>
-                            <p class="card-text text-muted mb-3">@cours.Description</p>
-
-                            <div class="d-flex align-items-center gap-3 mb-3">
-                                <img src="@(cours.Enseignant?.PhotoUrl ?? "images/avatar-default.svg")" alt="Photo de @cours.Enseignant?.NomComplet" class="teacher-avatar" />
-                                <div>
-                                    <div class="fw-semibold">@cours.Enseignant?.NomComplet ?? "Enseignant"</div>
-                                    <div class="text-muted small">Professeur</div>
-                                </div>
-                            </div>
-
-                            <div class="mt-auto d-flex justify-content-between align-items-center gap-2 flex-wrap">
-                                <span class="badge bg-primary">@cours.Type</span>
-                                <div>
-                                    <a class="btn btn-sm btn-outline-secondary me-2" href="@($"/cours/{cours.Id}")">Voir</a>
-                                    @if (CurrentUserService.IsAuthenticated && CurrentUserService.Role == "Apprenant")
-                                    {
-                                        if (enrolledCourseIds.Contains(cours.Id))
-                                        {
-                                            <button class="btn btn-sm btn-warning" @onclick="() => UnenrollAsync(cours.Id)">Se désinscrire</button>
-                                        }
-                                        else
-                                        {
-                                            <button class="btn btn-sm btn-primary" @onclick="() => EnrollAsync(cours.Id)">S'inscrire</button>
-                                        }
-                                    }
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+            <div class="text-center py-5">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Chargement...</span>
                 </div>
-            }
+                <p class="text-muted mt-2">Chargement du catalogue...</p>
+            </div>
+        }
+        else if (!FilteredCours.Any())
+        {
+            <div class="text-center py-5 bg-white rounded-4 border shadow-sm my-4 p-5">
+                <div class="fs-1 mb-3">📚</div>
+                <h5 class="fw-bold text-dark">Aucun cours trouvé</h5>
+                <p class="text-muted small mb-3">Essayez de modifier votre recherche ou vos filtres.</p>
+                <button class="btn btn-outline-primary btn-sm rounded-pill px-4" @onclick="ResetFilters">
+                    Réinitialiser les filtres
+                </button>
+            </div>
         }
         else
         {
-            <div class="col-12">
-                <div class="alert alert-warning">Aucun cours ne correspond à votre recherche. Essayez un autre mot-clé ou filtre.</div>
+            <div class="row g-4">
+                @foreach (var cours in FilteredCours)
+                {
+                    <div class="col-md-6 col-lg-4">
+                        <div class="card h-100 border-0 rounded-4 shadow-sm overflow-hidden course-card bg-white">
+
+                            <!-- Vignette avec Badge Type -->
+                            <div class="position-relative">
+                                <img src="@(string.IsNullOrEmpty(cours.MiniatureUrl) ? "images/course-default.svg" : cours.MiniatureUrl)"
+                                     class="card-img-top course-img"
+                                     alt="@cours.Titre" />
+                                <span class="badge bg-warning text-dark position-absolute top-0 start-0 m-3 shadow-sm rounded-pill px-3 py-2 fw-semibold border">
+                                    @(cours.Type == "Vidéo" ? "Vidéo" : "Texte")
+                                </span>
+                            </div>
+
+                            <!-- Contenu de la Carte -->
+                            <div class="card-body p-4 d-flex flex-column justify-content-between">
+                                <div>
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <span class="badge bg-primary-subtle text-primary fw-bold">@cours.Statut</span>
+                                        <small class="text-muted fw-bold">CRMS-UOB</small>
+                                    </div>
+
+                                    <h5 class="fw-bold text-dark mb-2 line-clamp-2 title-hover">
+                                        @cours.Titre
+                                    </h5>
+
+                                    <p class="text-muted small mb-3 line-clamp-3">
+                                        @cours.Description
+                                    </p>
+
+                                    <!-- SECTION 3 INFOS : CHAPITRES / TYPE / CERTIFICATION -->
+                                    <div class="course-meta-bar d-flex align-items-center justify-content-between bg-light rounded-3 p-2 mb-3 text-muted border-light">
+                                        <div class="d-flex align-items-center gap-1">
+                                           
+                                            <span>@cours.NombreChapitres chap.</span>
+                                        </div>
+                                        <div class="border-end h-100 mx-1"></div>
+                                        <div class="d-flex align-items-center gap-1">
+                                            
+                                            <span>@(cours.NombreChapitres * 20) min</span>
+                                        </div>
+                                        <div class="border-end h-100 mx-1"></div>
+                                        <div class="d-flex align-items-center gap-1">
+                                            @if (cours.AAccesCertificat)
+                                            {
+                                                <span class="text-success fw-semibold">Certifié</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="text-muted">Standard</span>
+                                            }
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- PIED DE CARTE : ENSEIGNANT DE LA TABLE ENSEIGNANTS / UTILISATEURS -->
+                                <!-- PIED DE CARTE : ENSEIGNANT DE LA TABLE ENSEIGNANTS / UTILISATEURS -->
+                                <div class="pt-3 border-top d-flex align-items-center justify-content-between mt-auto gap-2">
+                                    <!-- Groupe Photo + Info Enseignant -->
+                                    <div class="d-flex align-items-center gap-2 overflow-hidden me-2" style="min-width: 0;">
+                                        @if (!string.IsNullOrEmpty(cours.EnseignantPhotoUrl))
+                                        {
+                                            <img src="@cours.EnseignantPhotoUrl" alt="@cours.EnseignantNom" class="teacher-avatar flex-shrink-0" />
+                                        }
+                                        else
+                                        {
+                                            <div class="teacher-avatar-placeholder flex-shrink-0 rounded-circle bg-primary text-white d-flex align-items-center justify-content-center fw-bold">
+                                                @(string.IsNullOrEmpty(cours.EnseignantNom) ? "U" : cours.EnseignantNom.Substring(0, 1))
+                                            </div>
+                                        }
+                                        <div class="text-truncate">
+                                            <small class="text-muted d-block line-height-1" style="font-size: 0.7rem;">Enseignant</small>
+                                            <span class="fw-bold text-dark small text-truncate d-block">@cours.EnseignantNom</span>
+                                        </div>
+                                    </div>
+
+                                    <!-- Bouton d'action -->
+                                    <a href="/cours/@cours.Id" class="btn btn-outline-primary rounded-pill btn-sm px-3 fw-bold flex-shrink-0">
+                                        Consulter →
+                                    </a>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+                }
             </div>
         }
     </div>
-</div>
+</section>
 
 @code {
-    private string searchTerm = string.Empty;
-    private string? selectedType = null;
-    private List<ModelCours> courses = new();
-    private List<ModelCours> filteredCourses = new();
-    private HashSet<int> enrolledCourseIds = new();
-    private string actionMessage = string.Empty;
+    private List<CoursViewModel>? ListCours;
+    private string SearchQuery = string.Empty;
+    private string SelectedType = "Tous";
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
-        courses = _context.Cours
-            .Include(c => c.Enseignant)
-            .ToList();
-        FilterCourses();
-        LoadEnrolledCourses();
+        try
+        {
+            using var context = DbFactory.CreateDbContext();
+
+            // Requête basée sur vos entités d'origine
+            ListCours = await context.Cours
+                .Where(c => c.Statut == "Publié" || c.Statut == "Brouillon")
+                .Include(c => c.Chapitres)
+                .Include(c => c.Enseignant)
+                .OrderByDescending(c => c.Id)
+                .Select(c => new CoursViewModel
+                {
+                    Id = c.Id,
+                    Titre = c.Titre,
+                    Description = c.Description,
+                    Type = c.Type,
+                    Statut = c.Statut,
+                    MiniatureUrl = c.MiniatureUrl,
+                    NombreChapitres = c.Chapitres.Count,
+                    AAccesCertificat = c.Certificats.Any(),
+                    EnseignantNom = c.Enseignant != null ? c.Enseignant.NomComplet : "Enseignant UOB",
+                    EnseignantPhotoUrl = c.Enseignant != null ? c.Enseignant.PhotoUrl : "images/avatar-default.svg"
+                })
+                .ToListAsync();
+        }
+        catch (Exception)
+        {
+            ListCours = new List<CoursViewModel>();
+        }
     }
 
-    private void LoadEnrolledCourses()
-    {
-        enrolledCourseIds.Clear();
-        if (CurrentUserService.IsAuthenticated && CurrentUserService.Role == "Apprenant")
-        {
-            var userId = CurrentUserService.CurrentUser?.Id;
-            if (userId == null) return;
-            var apprenant = _context.Utilisateurs.OfType<Apprenant>()
-                .Include(a => a.CoursSuivis)
-                .FirstOrDefault(a => a.Id == userId.Value);
+    private IEnumerable<CoursViewModel> FilteredCours =>
+    (ListCours ?? new())
+    .Where(c => (SelectedType == "Tous" || c.Type.Equals(SelectedType, StringComparison.OrdinalIgnoreCase)) &&
+                (string.IsNullOrWhiteSpace(SearchQuery) ||
+                 c.Titre.Contains(SearchQuery, StringComparison.OrdinalIgnoreCase) ||
+                 c.Description.Contains(SearchQuery, StringComparison.OrdinalIgnoreCase) ||
+                 c.EnseignantNom.Contains(SearchQuery, StringComparison.OrdinalIgnoreCase))); // 👈 Ajout du filtre sur le nom de l'enseignant
 
-            if (apprenant != null)
-            {
-                foreach (var c in apprenant.CoursSuivis)
-                    enrolledCourseIds.Add(c.Id);
-            }
-        }
+    private int FilteredCoursCount => FilteredCours.Count();
+
+    private void FilterByType(string type) => SelectedType = type;
+
+    private void ResetFilters()
+    {
+        SearchQuery = string.Empty;
+        SelectedType = "Tous";
     }
 
-    private const string VideoType = "Vidéo";
-    private const string TextType = "Texte";
-
-    private void SetFilter(string? type)
+    public class CoursViewModel
     {
-        selectedType = type;
-        FilterCourses();
-    }
-
-    private void FilterCourses()
-    {
-        filteredCourses = courses
-            .Where(c => string.IsNullOrWhiteSpace(searchTerm) || c.Titre.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) || c.Description.Contains(searchTerm, StringComparison.OrdinalIgnoreCase))
-            .Where(c => selectedType == null || c.Type == selectedType)
-            .ToList();
-    }
-
-    private string GetFilterButtonClass(string? type)
-        => selectedType == type ? "btn btn-primary" : "btn btn-outline-secondary";
-
-    private async Task EnrollAsync(int coursId)
-    {
-        actionMessage = string.Empty;
-        if (!CurrentUserService.IsAuthenticated || CurrentUserService.Role != "Apprenant")
-        {
-            actionMessage = "Connecte-toi en tant qu'apprenant pour t'inscrire.";
-            return;
-        }
-
-        var userId = CurrentUserService.CurrentUser?.Id;
-        if (userId == null)
-        {
-            actionMessage = "Profil apprenant introuvable.";
-            return;
-        }
-
-        var apprenant = await _context.Utilisateurs.OfType<Apprenant>()
-            .Include(a => a.CoursSuivis)
-            .FirstOrDefaultAsync(a => a.Id == userId.Value);
-
-        if (apprenant == null)
-        {
-            actionMessage = "Profil apprenant introuvable.";
-            return;
-        }
-
-        var cours = await _context.Cours.FindAsync(coursId);
-        if (cours == null)
-        {
-            actionMessage = "Cours introuvable.";
-            return;
-        }
-
-        if (apprenant.CoursSuivis.Any(c => c.Id == coursId))
-        {
-            actionMessage = "Tu es déjà inscrit à ce cours.";
-            enrolledCourseIds.Add(coursId);
-            return;
-        }
-
-        apprenant.CoursSuivis.Add(cours);
-        await _context.SaveChangesAsync();
-
-        enrolledCourseIds.Add(coursId);
-        actionMessage = "Inscription réussie !";
-
-        // Redirect to course detail page
-        Navigation.NavigateTo($"/cours/{coursId}");
-    }
-
-    private async Task UnenrollAsync(int coursId)
-    {
-        actionMessage = string.Empty;
-        if (!CurrentUserService.IsAuthenticated || CurrentUserService.Role != "Apprenant")
-        {
-            actionMessage = "Connecte-toi en tant qu'apprenant pour te désinscrire.";
-            return;
-        }
-
-        var userId = CurrentUserService.CurrentUser?.Id;
-        if (userId == null)
-        {
-            actionMessage = "Profil apprenant introuvable.";
-            return;
-        }
-
-        var apprenant = await _context.Utilisateurs.OfType<Apprenant>()
-            .Include(a => a.CoursSuivis)
-            .FirstOrDefaultAsync(a => a.Id == userId.Value);
-
-        if (apprenant == null)
-        {
-            actionMessage = "Profil apprenant introuvable.";
-            return;
-        }
-
-        var cours = apprenant.CoursSuivis.FirstOrDefault(c => c.Id == coursId);
-        if (cours == null)
-        {
-            actionMessage = "Tu n'es pas inscrit à ce cours.";
-            enrolledCourseIds.Remove(coursId);
-            return;
-        }
-
-        apprenant.CoursSuivis.Remove(cours);
-        await _context.SaveChangesAsync();
-
-        enrolledCourseIds.Remove(coursId);
-        actionMessage = "Désinscription réussie.";
+        public int Id { get; set; }
+        public string Titre { get; set; } = string.Empty;
+        public string Description { get; set; } = string.Empty;
+        public string Type { get; set; } = string.Empty;
+        public string Statut { get; set; } = string.Empty;
+        public string MiniatureUrl { get; set; } = string.Empty;
+        public int NombreChapitres { get; set; }
+        public bool AAccesCertificat { get; set; }
+        public string EnseignantNom { get; set; } = string.Empty;
+        public string EnseignantPhotoUrl { get; set; } = string.Empty;
     }
 }

@@ -1,0 +1,518 @@
+﻿@page "/cours/{CoursId:int}/apprendre"
+@page "/cours/{CoursId:int}/chapitre/{ChapitreIdSelected:int}"
+@rendermode InteractiveServer
+
+@using Microsoft.EntityFrameworkCore
+@using PlateE_learning.Models
+@using PlateE_learning.Data
+
+@using CoursModel = PlateE_learning.Models.Cours
+@using InscriptionModel = PlateE_learning.Models.Inscription
+@using ChapitreModel = PlateE_learning.Models.Chapitre
+
+@inject IDbContextFactory<AppDbContext> DbFactory
+@inject NavigationManager Navigation
+@inject CurrentUserService CurrentUserService
+@implements IDisposable
+
+<PageTitle>@(CoursData?.Titre ?? "Apprentissage") - CRMS-UOB</PageTitle>
+
+@if (IsLoading)
+{
+    <div class="d-flex justify-content-center align-items-center vh-100 bg-white">
+        <div class="text-center">
+            <div class="spinner-border text-primary mb-3" role="status" style="width: 3rem; height: 3rem;">
+                <span class="visually-hidden">Chargement...</span>
+            </div>
+            <p class="text-muted fw-medium">Préparation de votre espace d'apprentissage...</p>
+        </div>
+    </div>
+}
+else if (CoursData == null || ChapitreActuel == null || !CurrentUserService.IsAuthenticated)
+{
+    <div class="container py-5 text-center vh-100 d-flex align-items-center justify-content-center">
+        <div class="alert alert-danger rounded-4 shadow-sm p-4 w-100" style="max-width: 500px;">
+            <h4 class="fw-bold mb-2">⚠️ Accès restreint</h4>
+            <p class="mb-3">Impossible d'accéder à ce cours. Veuillez vous connecter et vous y inscrire.</p>
+            <a href="/cours" class="btn btn-primary rounded-pill px-4 fw-bold">Retour au catalogue</a>
+        </div>
+    </div>
+}
+else
+{
+    <div class="container-fluid overflow-hidden p-0" style="height: 100vh; background-color: #f8f9fa;">
+        <div class="row h-100 g-0">
+
+            <!-- ZONE DU CONTENU (GAUCHE) - Scrollable sur 100vh -->
+            <div class="col-12 col-lg-8 col-xl-9 d-flex flex-column h-100 bg-white shadow-sm overflow-y-auto p-4 p-lg-5">
+
+                <!-- Lien Retour -->
+                <div class="mb-3">
+                    <a href="@($"/cours/{CoursId}")" class="text-decoration-none text-muted small fw-bold d-inline-flex align-items-center gap-1 hover-primary">
+                        <i class="bi bi-arrow-left"></i> Retour aux détails du cours
+                    </a>
+                </div>
+
+                <!-- En-Tête du Chapitre -->
+                <div class="d-flex justify-content-between align-items-center mb-4 pb-3 border-bottom">
+                    <div>
+                        <span class="badge bg-primary-subtle text-primary fw-bold px-3 py-2 rounded-pill mb-2">
+                            Chapitre @ChapitreActuel.Ordre sur @(CoursData?.Chapitres?.Count ?? 0)
+                        </span>
+                        <h2 class="fw-bold text-dark mb-0">@ChapitreActuel.Titre</h2>
+                    </div>
+                    @if (ChapitreActuel.Evaluation != null)
+                    {
+                        <span class="badge bg-warning text-dark px-3 py-2 rounded-pill fw-bold shadow-sm">
+                            Évaluation disponible
+                        </span>
+                    }
+                </div>
+
+                @if (!AfficherEvaluation)
+                {
+                    <!-- LECTURE DU CONTENU (Vidéo ou Texte) -->
+                    <div class="mb-4">
+                        @if (ChapitreActuel is ChapitreVideo chapitreVid)
+                        {
+                            <div class="ratio ratio-16x9 rounded-4 overflow-hidden shadow bg-black mb-4">
+                                @if (!string.IsNullOrEmpty(chapitreVid.CheminFichierVideo))
+                                {
+                                    <video controls controlsList="nodownload" class="w-100 h-100 object-fit-contain">
+                                        <source src="@chapitreVid.CheminFichierVideo" type="video/mp4" />
+                                        Votre navigateur ne supporte pas le lecteur vidéo.
+                                    </video>
+                                }
+                                else
+                                {
+                                    <div class="d-flex align-items-center justify-content-center text-white-50">
+                                        <span>Fichier vidéo non disponible.</span>
+                                    </div>
+                                }
+                            </div>
+                        }
+
+                        @if (ChapitreActuel is ChapitreTexte chapitreTxt)
+                        {
+                            <div class="chapter-text-content fs-6 text-secondary lh-lg bg-light p-4 rounded-4 border-start border-4 border-primary">
+                                @if (!string.IsNullOrEmpty(chapitreTxt.ContenuHtml))
+                                {
+                                    @((MarkupString)chapitreTxt.ContenuHtml)
+                                }
+                                else
+                                {
+                                    <div class="text-muted fst-italic">Aucun contenu textuel rédigé pour ce chapitre.</div>
+                                }
+                            </div>
+                        }
+                    </div>
+
+                    <!-- BOUTONS DE NAVIGATION BAS DE PAGE -->
+                    <div class="d-flex justify-content-between align-items-center mt-auto pt-4 border-top">
+                        <button class="btn btn-outline-secondary rounded-pill px-4 fw-bold"
+                                disabled="@(!AUnChapitrePrecedent)"
+                                @onclick="ChapitrePrecedent">
+                            ← Précédent
+                        </button>
+
+                        @if (ChapitreActuel.Evaluation != null)
+                        {
+                            <button class="btn btn-warning text-dark rounded-pill px-5 fw-bold shadow-sm" @onclick="OuvrirEvaluation">
+                                Passer l'évaluation
+                            </button>
+                        }
+                        else
+                        {
+                            <button class="btn btn-primary rounded-pill px-5 fw-bold shadow-sm" @onclick="ValiderEtContinuerSansEval">
+                                Suivant →
+                            </button>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <!-- INTERFACE DE L'ÉVALUATION -->
+                    <div class="card border-0 shadow-sm rounded-4 p-4 bg-light mb-4">
+                        @{
+                            var eval = ChapitreActuel.Evaluation;
+                        }
+                        <div class="d-flex justify-content-between align-items-center mb-4 pb-3 border-bottom">
+                            <div>
+                                <h4 class="fw-bold text-dark mb-1">📝 @eval.Titre</h4>
+                                <p class="text-muted small mb-0">Répondez aux questions ci-dessous. Note maximale : <strong>@eval.NoteMax pts</strong></p>
+                            </div>
+                            <span class="badge bg-primary rounded-pill px-3 py-2">
+                                @(eval.Questions?.Count ?? 0) Question(s)
+                            </span>
+                        </div>
+
+                        @if (eval.Questions == null || !eval.Questions.Any())
+                        {
+                            <div class="alert alert-warning rounded-3">Aucune question configurée pour cette évaluation.</div>
+                        }
+                        else
+                        {
+                            <div class="d-flex flex-column gap-4">
+                                @for (int i = 0; i < eval.Questions.Count; i++)
+                                {
+                                    var qst = eval.Questions[i];
+                                    var qIndex = i;
+
+                                    <div class="bg-white p-4 rounded-4 border shadow-sm">
+                                        <div class="d-flex justify-content-between align-items-start mb-3">
+                                            <h6 class="fw-bold text-dark mb-0">
+                                                <span class="badge bg-secondary-subtle text-secondary me-2">Question @(qIndex + 1)</span>
+                                                @qst.Enonce
+                                            </h6>
+                                            <span class="badge bg-light text-dark border ms-2">@qst.Points pt(s)</span>
+                                        </div>
+
+                                        <div class="d-flex flex-column gap-2">
+                                            @foreach (var opt in new[] { ("A", qst.OptionA), ("B", qst.OptionB), ("C", qst.OptionC), ("D", qst.OptionD) })
+                                            {
+                                                if (!string.IsNullOrWhiteSpace(opt.Item2))
+                                                {
+                                                    bool estCoche = ReponsesEtudiant.GetValueOrDefault(qst.Id) == opt.Item1;
+                                                    <div class="form-check p-3 rounded-3 border transition-all @(estCoche ? "bg-primary-subtle border-primary fw-bold" : "bg-white")">
+                                                        <input class="form-check-input ms-1 me-2" type="radio" name="@($"qst_{qst.Id}")" id="@($"opt_{opt.Item1}_{qst.Id}")"
+                                                               checked="@estCoche"
+                                                               @onchange='() => ChoisirReponse(qst.Id, opt.Item1)' />
+                                                        <label class="form-check-label w-100 cursor-pointer" for="@($"opt_{opt.Item1}_{qst.Id}")">
+                                                            <strong>@opt.Item1)</strong> @opt.Item2
+                                                        </label>
+                                                    </div>
+                                                }
+                                            }
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        }
+
+                        <div class="d-flex justify-content-between align-items-center mt-4 pt-3 border-top">
+                            <button class="btn btn-outline-secondary rounded-pill px-4 fw-bold" @onclick="FermerEvaluation">
+                                ← Revenir au cours
+                            </button>
+
+                            <button class="btn btn-success rounded-pill px-5 fw-bold shadow-sm" @onclick="SoumettreEvaluation">
+                                Soumettre et Valider ✔️
+                            </button>
+                        </div>
+                    </div>
+                }
+            </div>
+
+            <!-- SIDEBAR DE PROGRESSION & CHAPITRES (DROITE) -->
+            <div class="col-12 col-lg-4 col-xl-3 bg-light border-start d-flex flex-column h-100 p-4 overflow-hidden">
+                <h5 class="fw-bold text-dark mb-3">Progression du cours</h5>
+
+                <div class="mb-4 bg-white p-3 rounded-4 border shadow-sm">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="small text-muted fw-bold">Avancement global</span>
+                        <span class="fw-bold text-primary">@(InscriptionCourante?.Progression ?? 0)%</span>
+                    </div>
+                    <div class="progress rounded-pill" style="height: 10px;">
+                        <div class="progress-bar bg-primary rounded-pill" role="progressbar"
+                             style="width: @(InscriptionCourante?.Progression ?? 0)%;">
+                        </div>
+                    </div>
+                </div>
+
+                <h6 class="fw-bold text-dark mb-3">Chapitres du cours</h6>
+
+                <div class="list-group list-group-flush gap-2 overflow-y-auto flex-grow-1 pe-1">
+                    @{
+                        var chapitresTries = CoursData?.Chapitres?.OrderBy(c => c.Ordre).ToList() ?? new();
+                        int maxChapitreInscrit = InscriptionCourante != null && chapitresTries.Count > 0
+                            ? Math.Max(1, (int)Math.Ceiling((double)InscriptionCourante.Progression / 100 * chapitresTries.Count))
+                            : 1;
+                    }
+
+                    @foreach (var chap in chapitresTries)
+                    {
+                        bool estActif = ChapitreActuel != null && chap.Id == ChapitreActuel.Id;
+                        bool estAccessible = chap.Ordre <= maxChapitreInscrit || chap.Ordre == 1;
+
+                        <button class="list-group-item list-group-item-action border rounded-3 p-3 text-start d-flex align-items-center justify-content-between shadow-sm @(estActif ? "bg-primary text-white fw-bold" : "bg-white text-dark") @(!estAccessible ? "opacity-50" : "")"
+                                @onclick="() => ChargerChapitre(chap.Id)"
+                                disabled="@(!estAccessible)">
+                            <div class="d-flex align-items-center gap-2 overflow-hidden me-2">
+                                <span class="small text-truncate">@chap.Ordre. @chap.Titre</span>
+                            </div>
+                            <div>
+                                @if (chap.Ordre < maxChapitreInscrit || (InscriptionCourante?.EstTermine ?? false))
+                                {
+                                    <span>✅</span>
+                                }
+                                else if (!estAccessible)
+                                {
+                                    <span>🔒</span>
+                                }
+                                else if (chap.Evaluation != null)
+                                {
+                                    <span>📝</span>
+                                }
+                            </div>
+                        </button>
+                    }
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- POPUP MODAL DE RÉSULTAT (BOOTSTRAP) -->
+    @if (AfficherModalPopup)
+    {
+        <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5); z-index: 1050;">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content rounded-4 border-0 shadow-lg p-3">
+                    <div class="modal-header border-0 pb-0">
+                        <h4 class="modal-title fw-bold @(EstSuccesModal ? "text-success" : "text-danger")">
+                            @TitreModal
+                        </h4>
+                    </div>
+                    <div class="modal-body py-3">
+                        <p class="fs-6 text-secondary mb-0">@MessageModal</p>
+                    </div>
+                    <div class="modal-footer border-0 pt-0">
+                        @if (EstSuccesModal)
+                        {
+                            <button type="button" class="btn btn-success rounded-pill px-4 fw-bold w-100 py-2 shadow-sm" @onclick="FermerPopupEtContinuer">
+                                Continuer vers le chapitre suivant 🚀
+                            </button>
+                        }
+                        else
+                        {
+                            <button type="button" class="btn btn-outline-secondary rounded-pill px-4 fw-bold w-100 py-2" @onclick="() => AfficherModalPopup = false">
+                                Réessayer / Revoir le cours
+                            </button>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+}
+
+@code {
+    [Parameter] public int CoursId { get; set; }
+    [Parameter] public int? ChapitreIdSelected { get; set; }
+
+    private CoursModel? CoursData;
+    private ChapitreModel? ChapitreActuel;
+    private InscriptionModel? InscriptionCourante;
+    private bool IsLoading = true;
+
+    private bool AfficherEvaluation = false;
+    private bool EstReussiDerniereEval = false;
+    private Dictionary<int, string> ReponsesEtudiant = new();
+
+    // Gestion de la modale Popup
+    private bool AfficherModalPopup = false;
+    private string TitreModal = string.Empty;
+    private string MessageModal = string.Empty;
+    private bool EstSuccesModal = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        CurrentUserService.OnChange += StateHasChanged;
+        await ChargerDonneesCours();
+    }
+
+    public void Dispose() => CurrentUserService.OnChange -= StateHasChanged;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (CoursData?.Chapitres != null && ChapitreIdSelected.HasValue && ChapitreActuel?.Id != ChapitreIdSelected.Value)
+        {
+            ChapitreActuel = CoursData.Chapitres.FirstOrDefault(c => c.Id == ChapitreIdSelected.Value) ?? CoursData.Chapitres.OrderBy(c => c.Ordre).FirstOrDefault();
+            AfficherEvaluation = false;
+        }
+    }
+
+    private async Task ChargerDonneesCours()
+    {
+        IsLoading = true;
+        try
+        {
+            if (!CurrentUserService.IsAuthenticated || CurrentUserService.CurrentUser == null) return;
+            using var context = DbFactory.CreateDbContext();
+            int currentUserId = CurrentUserService.CurrentUser.Id;
+
+            CoursData = await context.Cours
+                .Include(c => c.Chapitres)
+                .FirstOrDefaultAsync(c => c.Id == CoursId);
+
+            if (CoursData?.Chapitres != null)
+            {
+                var chapitreIds = CoursData.Chapitres.Select(c => c.Id).ToList();
+                var evaluations = await context.Set<Evaluation>()
+                    .Include(e => e.Questions)
+                    .Where(e => chapitreIds.Contains(e.ChapitreId))
+                    .ToListAsync();
+
+                foreach (var chap in CoursData.Chapitres)
+                {
+                    chap.Evaluation = evaluations.FirstOrDefault(e => e.ChapitreId == chap.Id);
+                }
+
+                InscriptionCourante = await context.Inscriptions
+                    .FirstOrDefaultAsync(i => i.CoursId == CoursId && i.ApprenantId == currentUserId);
+
+                if (ChapitreIdSelected.HasValue)
+                {
+                    ChapitreActuel = CoursData.Chapitres.FirstOrDefault(c => c.Id == ChapitreIdSelected.Value);
+                }
+                ChapitreActuel ??= CoursData.Chapitres.OrderBy(c => c.Ordre).FirstOrDefault();
+            }
+        }
+        finally { IsLoading = false; }
+    }
+
+    private void ChargerChapitre(int id)
+    {
+        ChapitreActuel = CoursData?.Chapitres?.FirstOrDefault(c => c.Id == id);
+        AfficherEvaluation = false;
+        ReponsesEtudiant.Clear();
+        AfficherModalPopup = false;
+    }
+
+    private bool AUnChapitrePrecedent =>
+        CoursData?.Chapitres != null && ChapitreActuel != null &&
+        CoursData.Chapitres.Any(c => c.Ordre < ChapitreActuel.Ordre);
+
+    private void ChapitrePrecedent()
+    {
+        if (CoursData?.Chapitres == null || ChapitreActuel == null) return;
+        var prev = CoursData.Chapitres.Where(c => c.Ordre < ChapitreActuel.Ordre).OrderByDescending(c => c.Ordre).FirstOrDefault();
+        if (prev != null)
+        {
+            ChapitreActuel = prev;
+            AfficherEvaluation = false;
+        }
+    }
+
+    private void OuvrirEvaluation() => AfficherEvaluation = true;
+    private void FermerEvaluation() => AfficherEvaluation = false;
+    private void ChoisirReponse(int qId, string opt) => ReponsesEtudiant[qId] = opt;
+
+    private async Task ValiderEtContinuerSansEval()
+    {
+        await AvancerProgression();
+    }
+
+    private async Task SoumettreEvaluation()
+    {
+        if (ChapitreActuel?.Evaluation == null || CurrentUserService.CurrentUser == null) return;
+        var eval = ChapitreActuel.Evaluation;
+        int pointsObtenus = 0;
+
+        foreach (var qst in eval.Questions)
+        {
+            if (ReponsesEtudiant.TryGetValue(qst.Id, out var reponseDonnee))
+            {
+                if (reponseDonnee.Equals(qst.ReponseCorrecte, StringComparison.OrdinalIgnoreCase))
+                {
+                    pointsObtenus += qst.Points;
+                }
+            }
+        }
+
+        double pourcentage = eval.NoteMax > 0 ? ((double)pointsObtenus / eval.NoteMax) * 100 : 0;
+        EstReussiDerniereEval = pourcentage >= 50; // Seuil de réussite à 50%
+
+        using var context = DbFactory.CreateDbContext();
+
+        var resultat = new ResultatEvaluation
+        {
+            ApprenantId = CurrentUserService.CurrentUser.Id,
+            EvaluationId = eval.Id,
+            PointsObtenus = pointsObtenus,
+            PointsMax = eval.NoteMax,
+            EstReussi = EstReussiDerniereEval
+        };
+        context.Set<ResultatEvaluation>().Add(resultat);
+        await context.SaveChangesAsync();
+
+        // Paramétrage du contenu de la popup modale
+        EstSuccesModal = EstReussiDerniereEval;
+        if (EstSuccesModal)
+        {
+            TitreModal = "🎉 Félicitations !";
+            MessageModal = $"Vous avez obtenu {pointsObtenus}/{eval.NoteMax} ({pourcentage:F0}%). Vous avez validé ce chapitre avec succès !";
+        }
+        else
+        {
+            TitreModal = "❌ Échec à l'évaluation";
+            MessageModal = $"Vous avez obtenu {pointsObtenus}/{eval.NoteMax} ({pourcentage:F0}%). Le seuil de réussite est de 50%. Veuillez revoir le cours et réessayer.";
+        }
+
+        AfficherModalPopup = true;
+        StateHasChanged();
+    }
+
+    private void FermerPopupEtContinuer()
+    {
+        AfficherModalPopup = false;
+        if (EstSuccesModal)
+        {
+            _ = AvancerProgression();
+        }
+    }
+
+    private async Task AvancerProgression()
+    {
+        if (CoursData?.Chapitres == null || ChapitreActuel == null || CurrentUserService.CurrentUser == null) return;
+        int currentUserId = CurrentUserService.CurrentUser.Id;
+        var suivant = CoursData.Chapitres.Where(c => c.Ordre > ChapitreActuel.Ordre).OrderBy(c => c.Ordre).FirstOrDefault();
+
+        using var context = DbFactory.CreateDbContext();
+        var inscription = await context.Inscriptions.FirstOrDefaultAsync(i => i.CoursId == CoursId && i.ApprenantId == currentUserId);
+
+        if (inscription != null)
+        {
+            // VÉRIFICATION : Si le cours est déjà complet / terminé, on ne touche plus à la progression
+            if (!inscription.EstTermine)
+            {
+                int totalChapitres = CoursData.Chapitres.Count;
+                int nouvelleProgression = (int)Math.Round(((double)ChapitreActuel.Ordre / totalChapitres) * 100);
+
+                if (nouvelleProgression > inscription.Progression)
+                {
+                    inscription.Progression = Math.Min(100, nouvelleProgression);
+                    if (inscription.Progression >= 100 || ChapitreActuel.Ordre >= totalChapitres)
+                    {
+                        inscription.EstTermine = true;
+                        inscription.Progression = 100; // S'assure d'atteindre exactement 100%
+
+                        var resultats = await context.Set<ResultatEvaluation>()
+                            .Include(r => r.Evaluation)
+                            .Where(r => r.ApprenantId == currentUserId && r.Evaluation != null && r.Evaluation.Chapitre.CoursId == CoursId)
+                            .ToListAsync();
+
+                        if (resultats.Any())
+                        {
+                            inscription.NoteFinale = resultats.Average(r => r.Pourcentage);
+                        }
+                        inscription.DateCompletion = DateTime.UtcNow;
+                    }
+                }
+                await context.SaveChangesAsync();
+                InscriptionCourante = inscription;
+            }
+        }
+
+        if (suivant != null)
+        {
+            ChapitreActuel = suivant;
+            AfficherEvaluation = false;
+            ReponsesEtudiant.Clear();
+        }
+        else
+        {
+            // Optionnel : Si c'était le dernier chapitre et qu'on clique sur suivant, on peut rediriger vers la page des détails du cours
+            Navigation.NavigateTo($"/cours/{CoursId}");
+        }
+    }
+}

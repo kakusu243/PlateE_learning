@@ -5,8 +5,8 @@
 <nav class="navbar navbar-expand-lg navbar-light bg-white border-bottom py-3 main-navbar">
     <div class="container">
         <!-- Logo de la plateforme -->
-        <a class="navbar-brand fw-bold text-primary fs-4" href="/">
-            <span class="brand-accent">PlateE</span>-Learning
+        <a class="navbar-brand fw-bold text-warning fs-4" href="/">
+            CRMS-UOB
         </a>
 
         <!-- Bouton mobile (hamburger) -->
@@ -23,15 +23,21 @@
                     </NavLink>
                 </li>
                 <li class="nav-item">
+                    <NavLink class="nav-link px-3 py-2 rounded-3" href="/about">
+                        À propos
+                    </NavLink>
+                </li>
+                <li class="nav-item">
                     <NavLink class="nav-link px-3 py-2 rounded-3" href="/cours">
                         Cours
                     </NavLink>
                 </li>
                 <li class="nav-item">
-                    <NavLink class="nav-link px-3 py-2 rounded-3" href="/#apropos">
-                        À propos
+                    <NavLink class="nav-link px-3 py-2 rounded-3" href="/webinaires">
+                        Webinaires
                     </NavLink>
                 </li>
+               
 
                 @if (CurrentUserService.IsAuthenticated)
                 {
@@ -50,9 +56,21 @@
                                 Espace Formateur
                             </NavLink>
                         </li>
+
+                        <li class="nav-item">
+                            <NavLink class="nav-link px-3 py-2 rounded-3" href="/Forums">
+                                Forums
+                            </NavLink>
+                        </li>
                     }
                     else if (CurrentUserService.Role == "Apprenant")
                     {
+                        <li class="nav-item">
+                            <NavLink class="nav-link px-3 py-2 rounded-3" href="/Forums">
+                                Forums
+                            </NavLink>
+                        </li>
+
                         <li class="nav-item">
                             <NavLink class="nav-link px-3 py-2 rounded-3" href="/mes-cours">
                                 Mes Cours
@@ -66,11 +84,8 @@
             <div class="d-flex align-items-center gap-2 flex-wrap">
                 @if (!CurrentUserService.IsAuthenticated)
                 {
-                    <NavLink class="btn btn-light text-primary fw-medium px-4 py-2 rounded-3" href="/login">
-                        Se connecter
-                    </NavLink>
-                    <NavLink class="btn btn-primary fw-medium px-4 py-2 rounded-3 shadow-sm" href="/inscription">
-                        S'inscrire
+                    <NavLink class="btn btn-warning fw-medium px-4 py-2 rounded-3 shadow-sm" href="/login">
+                        Se Connecter
                     </NavLink>
                 }
                 else
@@ -89,10 +104,6 @@
                             @CurrentUserService.CurrentUser?.NomComplet
                         </span>
                     </NavLink>
-
-                    <button class="btn btn-outline-danger btn-sm px-3 rounded-3" @onclick="Logout">
-                        Déconnexion
-                    </button>
                 }
             </div>
         </div>
